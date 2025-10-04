@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirCast - Air Quality Forecast</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🌍 AirCast</h1>
+            <p>Real-Time Air Quality Forecasts Powered by NASA TEMPO</p>
+        </div>
+    </header>
+
+    <div id="map"></div>
+
+    <div id="loading" class="loading">
+        <p>Loading air quality data...</p>
+    </div>
+
+    <script src="js/map.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC-_zqbI3aKGW6J3rslTRljfvOuYCNS2Us&libraries=visualization&callback=initMap" async defer></script>
+</body>
+</html>
