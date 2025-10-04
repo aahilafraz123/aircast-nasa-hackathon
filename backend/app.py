@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from models.forecast import forecast_air_quality
 import sys
 import os
 
@@ -67,6 +68,27 @@ def get_tempo():
     return jsonify({
         "status": "success",
         "tempo": tempo_data
+    })
+
+@app.route('/api/forecast')
+def get_forecast():
+    lat = float(request.args.get('lat', 39.9526))
+    lon = float(request.args.get('lon', -75.1652))
+    
+    # Get current AQI from ground stations
+    locations = get_latest_measurements(lat, lon, radius_km=25)
+    current_aqi = locations[0]['aqi'] if locations else 65
+    
+    # Get weather forecast
+    weather_data = get_weather_forecast(lat, lon)
+    
+    # Generate forecast
+    forecast = forecast_air_quality(current_aqi, weather_data, hours_ahead=6)
+    
+    return jsonify({
+        "status": "success",
+        "current_aqi": current_aqi,
+        "forecast": forecast
     })
 
 if __name__ == '__main__':
