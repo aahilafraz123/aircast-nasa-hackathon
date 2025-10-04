@@ -8,6 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'api'))
 
 from openaq import get_latest_measurements
 from weather import get_current_weather, get_weather_forecast
+from tempo import get_tempo_value_at_location
 
 app = Flask(__name__)
 CORS(app)
@@ -19,7 +20,8 @@ def home():
         "status": "success",
         "endpoints": [
             "/api/air-quality?lat=39.95&lon=-75.16",
-            "/api/weather?lat=39.95&lon=-75.16"
+            "/api/weather?lat=39.95&lon=-75.16",
+            "/api/tempo?lat=39.95&lon=-75.16"
         ]
     })
 
@@ -53,6 +55,18 @@ def get_weather():
         "status": "success",
         "current": current,
         "forecast": forecast
+    })
+
+@app.route('/api/tempo')
+def get_tempo():
+    lat = float(request.args.get('lat', 39.9526))
+    lon = float(request.args.get('lon', -75.1652))
+    
+    tempo_data = get_tempo_value_at_location(lat, lon)
+    
+    return jsonify({
+        "status": "success",
+        "tempo": tempo_data
     })
 
 if __name__ == '__main__':
