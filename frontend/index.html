@@ -47,6 +47,7 @@
     <div class="main-container">
         <!-- Left Sidebar - Controls & Info -->
         <aside class="sidebar glass-card">
+            <!-- 1. SEARCH SECTION (stays at top) -->
             <div class="search-section">
                 <h3><i class="fas fa-location-dot"></i> Location</h3>
                 <div class="search-box">
@@ -58,78 +59,39 @@
                 </button>
             </div>
             
-<!-- NEW: AI Daily Brief -->
-<div class="ai-daily-brief" id="ai-daily-brief">
-    <h3><i class="fas fa-brain"></i> AI Daily Brief</h3>
-    <div class="ai-brief-content" id="ai-brief-content">
-        <div class="ai-loading">
-            <div class="mini-spinner"></div>
-            <p>AI is analyzing conditions...</p>
-        </div>
-    </div>
-    <div class="ai-brief-footer">
-        <span class="ai-badge">✨ Powered by AI</span>
-        <span class="ai-timestamp" id="ai-timestamp"></span>
-    </div>
-</div>
-
-<!-- NEW: AI Chat Assistant -->
-<div class="ai-chat-section" id="ai-chat-section">
-    <h3><i class="fas fa-comments"></i> Ask AI Assistant</h3>
-    
-    <!-- Chat Messages Container -->
-    <div class="chat-messages" id="chat-messages">
-        <div class="chat-welcome">
-            <p>👋 Hi! I'm your AI air quality assistant.</p>
-            <p>Ask me anything about:</p>
-            <div class="quick-questions">
-                <button class="quick-q" onclick="askQuickQuestion('Is it safe for kids to play outside?')">
-                    👶 Safe for kids?
-                </button>
-                <button class="quick-q" onclick="askQuickQuestion('When is the best time to exercise outdoors?')">
-                    🏃 Best time to exercise?
-                </button>
-                <button class="quick-q" onclick="askQuickQuestion('Should I cancel outdoor practice?')">
-                    ⚽ Cancel practice?
-                </button>
+            <!-- 2. CURRENT AIR QUALITY (moved to top position) -->
+            <div class="current-aqi-display" id="current-aqi">
+                <h3>Current Air Quality</h3>
+                <div class="aqi-loading">
+                    <div class="spinner"></div>
+                    <p>Loading...</p>
+                </div>
             </div>
-        </div>
-    </div>
-    
-    <!-- Chat Input -->
-    <div class="chat-input-container">
-        <input 
-            type="text" 
-            id="chat-input" 
-            class="chat-input" 
-            placeholder="Ask about air quality..."
-            maxlength="200"
-            onkeypress="if(event.key === 'Enter') sendChatMessage()"
-        />
-        <button class="btn-send" onclick="sendChatMessage()">
-            <i class="fas fa-paper-plane"></i>
-        </button>
-    </div>
-</div>
 
-<div class="current-aqi-display" id="current-aqi">
-    <h3>Current Air Quality</h3>
-    <div class="aqi-loading">
-        <div class="spinner"></div>
-        <p>Loading...</p>
-    </div>
-</div>
+            <!-- 3. AI DAILY BRIEF (now second) -->
+            <div class="ai-daily-brief" id="ai-daily-brief">
+                <h3><i class="fas fa-brain"></i> AI Daily Brief</h3>
+                <div class="ai-brief-content" id="ai-brief-content">
+                    <div class="ai-loading">
+                        <div class="mini-spinner"></div>
+                        <p>AI is analyzing conditions...</p>
+                    </div>
+                </div>
+                <div class="ai-brief-footer">
+                    <span class="ai-badge">✨ Powered by AI</span>
+                    <span class="ai-timestamp" id="ai-timestamp"></span>
+                </div>
+            </div>
 
+            <!-- AI CHAT REMOVED FROM SIDEBAR - Now floating button -->
+
+            <!-- 4. HEALTH ALERTS -->
             <div class="health-alerts" id="health-alerts">
                 <h3><i class="fas fa-triangle-exclamation"></i> Health Alerts</h3>
                 <div class="alert-placeholder">No active alerts</div>
             </div>
 
-            <div class="health-alerts" id="health-alerts">
-                <h3><i class="fas fa-triangle-exclamation"></i> Health Alerts</h3>
-                <div class="alert-placeholder">No active alerts</div>
-            </div>
-
+            <!-- 5. USER SAFETY GUIDE -->
             <div class="user-safety-section" id="user-safety-guide">
                 <h3><i class="fas fa-users"></i> Activity Safety Guide</h3>
                 <div class="safety-loading">
@@ -137,8 +99,7 @@
                 </div>
             </div>
 
-            <div class="data-sources">
-
+            <!-- 6. DATA SOURCES -->
             <div class="data-sources">
                 <h3><i class="fas fa-database"></i> Data Sources</h3>
                 <div class="source-list">
@@ -156,6 +117,8 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 7. AQI LEGEND -->
             <div class="aqi-legend">
                 <h3><i class="fas fa-palette"></i> AQI Scale</h3>
                 <div class="legend-items">
@@ -321,6 +284,61 @@
             </div>
         </div>
     </template>
+
+    <!-- ==================== FLOATING AI CHAT BUTTON ==================== -->
+    <button class="floating-chat-btn" id="floating-chat-btn" onclick="toggleChatPanel()">
+        <i class="fas fa-comments"></i>
+        <span class="chat-badge">AI</span>
+    </button>
+
+    <!-- ==================== FLOATING CHAT PANEL ==================== -->
+    <div class="floating-chat-panel" id="floating-chat-panel">
+        <div class="chat-panel-header">
+            <div class="chat-panel-title">
+                <i class="fas fa-robot"></i>
+                <span>AI Assistant</span>
+            </div>
+            <button class="chat-panel-close" onclick="toggleChatPanel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="chat-panel-body">
+            <!-- Chat Messages Container -->
+            <div class="chat-messages" id="chat-messages-floating">
+                <div class="chat-welcome">
+                    <p>👋 Hi! I'm your AI air quality assistant.</p>
+                    <p>Ask me anything about:</p>
+                    <div class="quick-questions">
+                        <button class="quick-q" onclick="askQuickQuestion('Is it safe for kids to play outside?')">
+                            👶 Safe for kids?
+                        </button>
+                        <button class="quick-q" onclick="askQuickQuestion('When is the best time to exercise outdoors?')">
+                            🏃 Best time to exercise?
+                        </button>
+                        <button class="quick-q" onclick="askQuickQuestion('Should I cancel outdoor practice?')">
+                            ⚽ Cancel practice?
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chat Input -->
+            <div class="chat-input-container">
+                <input 
+                    type="text" 
+                    id="chat-input-floating" 
+                    class="chat-input" 
+                    placeholder="Ask about air quality..."
+                    maxlength="200"
+                    onkeypress="if(event.key === 'Enter') sendChatMessage()"
+                />
+                <button class="btn-send" onclick="sendChatMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/map.js"></script>

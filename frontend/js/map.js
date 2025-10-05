@@ -193,7 +193,6 @@ async function fetchAllData() {
         await createComparisonVisualization();
 
         await updateUserGroupSafety();
-
         
         showLoadingOverlay(false);
     } catch (error) {
@@ -241,7 +240,6 @@ async function fetchAISummary() {
         `;
     }
 }
-
 
 // Fetch Air Quality Data
 async function fetchAirQualityData() {
@@ -378,32 +376,32 @@ async function showEnhancedInfoWindow(location, marker) {
     
     // Build measurements grid
     const measurementsHTML = Object.entries(location.measurements || {}).map(([key, value]) => {
-    let displayValue = value;
-    let unit = '';
-    
-    // Handle different measurement types
-    if (key.toLowerCase() === 'pm25' || key.toLowerCase() === 'pm2.5') {
-        displayValue = typeof value === 'number' ? value.toFixed(1) : value;
-        unit = 'µg/m³';
-    } else if (key.toLowerCase() === 'no2') {
-        // Convert to ppb if needed
-        displayValue = typeof value === 'number' ? (value < 1 ? (value * 1000).toFixed(1) : value.toFixed(1)) : value;
-        unit = 'ppb';
-    } else if (key.toLowerCase() === 'o3') {
-        // Convert to ppb if needed  
-        displayValue = typeof value === 'number' ? (value < 1 ? (value * 1000).toFixed(1) : value.toFixed(1)) : value;
-        unit = 'ppb';
-    } else {
-        displayValue = typeof value === 'number' ? value.toFixed(1) : value;
-    }
-    
-    return `
-        <div class="measurement-item">
-            <div class="measurement-value">${displayValue}</div>
-            <div class="measurement-label">${key.toUpperCase()} ${unit}</div>
-        </div>
-    `;
-}).join('');
+        let displayValue = value;
+        let unit = '';
+        
+        // Handle different measurement types
+        if (key.toLowerCase() === 'pm25' || key.toLowerCase() === 'pm2.5') {
+            displayValue = typeof value === 'number' ? value.toFixed(1) : value;
+            unit = 'µg/m³';
+        } else if (key.toLowerCase() === 'no2') {
+            // Convert to ppb if needed
+            displayValue = typeof value === 'number' ? (value < 1 ? (value * 1000).toFixed(1) : value.toFixed(1)) : value;
+            unit = 'ppb';
+        } else if (key.toLowerCase() === 'o3') {
+            // Convert to ppb if needed  
+            displayValue = typeof value === 'number' ? (value < 1 ? (value * 1000).toFixed(1) : value.toFixed(1)) : value;
+            unit = 'ppb';
+        } else {
+            displayValue = typeof value === 'number' ? value.toFixed(1) : value;
+        }
+        
+        return `
+            <div class="measurement-item">
+                <div class="measurement-value">${displayValue}</div>
+                <div class="measurement-label">${key.toUpperCase()} ${unit}</div>
+            </div>
+        `;
+    }).join('');
     
     const content = `
         <div class="enhanced-info-window">
@@ -471,8 +469,6 @@ function updateCurrentAQI(location) {
 }
 
 // Update Pollutant Data
-// Update Pollutant Data
-// Update Pollutant Data - FIXED VERSION
 function updatePollutantData(measurements) {
     const container = document.getElementById('pollutant-data');
     
@@ -912,91 +908,8 @@ function closeInfoWindow() {
         infoWindow.close();
     }
 }
-// Calculate Best Times to Go Outside with Age Recommendations
-async function calculateBestTimes() {
-    const container = document.getElementById('best-time-recommendations');
-    
-    try {
-        // Get current AQI
-        const currentAQIElement = document.querySelector('#current-aqi .aqi-value');
-        const currentAQI = currentAQIElement ? parseInt(currentAQIElement.textContent) : 65;
-        
-        // Get weather forecast for next 24 hours
-        const response = await fetch(`http://localhost:8000/api/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
-        const data = await response.json();
-        
-        if (!data.forecast || data.forecast.length === 0) {
-            container.innerHTML = `
-                <h3><i class="fas fa-clock"></i> Best Time Outdoors</h3>
-                <p class="no-safe-times">Forecast data unavailable</p>
-            `;
-            return;
-        }
-        
-        // Simulate hourly AQI for 24 hours based on weather
-        const hourlyAQI = [];
-        for (let i = 0; i < Math.min(8, data.forecast.length); i++) {
-            const weather = data.forecast[i];
-            const currentHour = new Date().getHours();
-            const hour = (currentHour + (i * 3)) % 24; // 3-hour intervals
-            
-            let predictedAQI = currentAQI;
-            
-            // Weather factors
-            if (weather.wind_speed > 10) predictedAQI *= 0.85;
-            if (weather.temperature > 85) predictedAQI *= 1.15;
-            if (weather.precipitation > 0) predictedAQI *= 0.7;
-            
-            // Time of day factors
-            if ((hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 19)) {
-                predictedAQI *= 1.2; // Rush hour
-            } else if (hour >= 22 || hour <= 5) {
-                predictedAQI *= 0.9; // Night
-            }
-            
-            hourlyAQI.push({
-                hour: hour,
-                aqi: Math.round(predictedAQI),
-                isToday: i < 4 // First 12 hours = today
-            });
-        }
-        
-        // Find best time windows
-        const recommendations = findBestTimeWindows(hourlyAQI);
-        
-        // Display recommendations
-        if (recommendations.length === 0) {
-            container.innerHTML = `
-                <h3><i class="fas fa-clock"></i> Best Time Outdoors</h3>
-                <p class="no-safe-times">⚠️ Poor air quality all day. Limit outdoor activities.</p>
-            `;
-        } else {
-            const recsHTML = recommendations.map(rec => `
-                <div class="time-slot">
-                    <div class="time-header">
-                        <span class="time-range">${rec.day}: ${rec.timeRange}</span>
-                        <span class="time-aqi">AQI ${rec.aqi}</span>
-                    </div>
-                    <div class="age-groups">
-                        ${rec.badges.map(badge => `<span class="age-badge ${badge.class}">${badge.text}</span>`).join('')}
-                    </div>
-                </div>
-            `).join('');
-            
-            container.innerHTML = `
-                <h3><i class="fas fa-clock"></i> Best Time Outdoors</h3>
-                ${recsHTML}
-            `;
-        }
-    } catch (error) {
-        console.error('Error calculating best times:', error);
-        container.innerHTML = `
-            <h3><i class="fas fa-clock"></i> Best Time Outdoors</h3>
-            <p class="no-safe-times">Unable to calculate recommendations</p>
-        `;
-    }
-}
 
+// User Group Safety
 async function updateUserGroupSafety() {
     const container = document.getElementById('user-safety-guide');
     
@@ -1076,66 +989,7 @@ async function updateUserGroupSafety() {
     }
 }
 
-function findBestTimeWindows(hourlyData) {
-    const windows = [];
-    
-    for (let i = 0; i < hourlyData.length; i++) {
-        const slot = hourlyData[i];
-        const day = slot.isToday ? 'Today' : 'Tomorrow';
-        const timeRange = formatTimeRange(slot.hour);
-        const aqi = slot.aqi;
-        
-        // Determine who can go outside
-        const badges = getAgeBadges(aqi);
-        
-        if (badges.length > 0) {
-            windows.push({
-                day,
-                timeRange,
-                aqi,
-                badges
-            });
-        }
-    }
-    
-    return windows.slice(0, 4); // Show top 4 windows
-}
-
-function getAgeBadges(aqi) {
-    const badges = [];
-    
-    if (aqi <= 50) {
-        // Good - Everyone can go outside
-        badges.push({ text: '👶 All Ages Safe', class: 'all' });
-    } else if (aqi <= 75) {
-        // Moderate-low
-        badges.push({ text: '👦 Children OK', class: 'children' });
-        badges.push({ text: '💪 Adults OK', class: 'adults' });
-        badges.push({ text: '⚠️ Seniors: Limit Activity', class: 'warning' });
-    } else if (aqi <= 100) {
-        // Moderate
-        badges.push({ text: '💪 Healthy Adults Only', class: 'adults' });
-        badges.push({ text: '⚠️ Not for: Kids, Seniors', class: 'warning' });
-    } else if (aqi <= 150) {
-        // Unhealthy for sensitive
-        badges.push({ text: '🏃 Athletes Only (16-30)', class: 'adults' });
-        badges.push({ text: '🚫 Others Stay Inside', class: 'warning' });
-    }
-    // Above 150 - no one should go out, return empty array
-    
-    return badges;
-}
-
-function formatTimeRange(startHour) {
-    const endHour = (startHour + 3) % 24;
-    const formatHour = (h) => {
-        const ampm = h >= 12 ? 'PM' : 'AM';
-        const display = h % 12 || 12;
-        return `${display}${ampm}`;
-    };
-    return `${formatHour(startHour)}-${formatHour(endHour)}`;
-}
-
+// Comparison Visualization (Satellite vs Ground)
 async function createComparisonVisualization() {
     const container = document.getElementById('comparison-chart');
     
@@ -1159,290 +1013,6 @@ async function createComparisonVisualization() {
         }
         
         if (groundData.locations && groundData.locations.length > 0) {
-            const tempoAQI = tempoData.tempo.aqi;
-            const groundAQI = groundData.locations[0].aqi;
-            const difference = Math.abs(tempoAQI - groundAQI);
-            const accuracy = 100 - (difference / Math.max(tempoAQI, groundAQI) * 100);
-            
-            // Generate discrepancy alert if difference > 25
-            let discrepancyAlert = '';
-            if (difference > 25) {
-                let explanation = '';
-                let alertColor = '';
-                
-                if (tempoAQI > groundAQI) {
-                    explanation = 'Satellite detects pollution aloft that hasn\'t reached ground level yet. Surface conditions may worsen as this pollution descends.';
-                    alertColor = '#FF7E00'; // Orange warning
-                } else {
-                    explanation = 'Surface pollution is localized near ground sensors. Satellite shows cleaner air in the atmospheric column above, indicating conditions may improve.';
-                    alertColor = '#FFFF00'; // Yellow caution
-                }
-                
-                discrepancyAlert = `
-                    <div class="discrepancy-alert" style="border-left: 4px solid ${alertColor};">
-                        <div class="alert-icon">⚠️</div>
-                        <div class="alert-content">
-                            <strong>Significant Discrepancy Detected (${difference} AQI points)</strong>
-                            <p>${explanation}</p>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            container.innerHTML = `
-                ${discrepancyAlert}
-                
-                <div class="comparison-bars">
-                    <div class="comparison-item">
-                        <div class="comparison-label">
-                            <i class="fas fa-satellite"></i> NASA TEMPO
-                        </div>
-                        <div class="comparison-bar-container">
-                            <div class="comparison-bar" style="width: ${(tempoAQI/200)*100}%; background: ${getAQIColor(tempoAQI)};">
-                                <span class="bar-value">${tempoAQI}</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="comparison-item">
-                        <div class="comparison-label">
-                            <i class="fas fa-tower-broadcast"></i> Ground Station
-                        </div>
-                        <div class="comparison-bar-container">
-                            <div class="comparison-bar" style="width: ${(groundAQI/200)*100}%; background: ${getAQIColor(groundAQI)};">
-                                <span class="bar-value">${groundAQI}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="accuracy-metric">
-                    <div class="accuracy-circle" style="background: conic-gradient(#667eea ${accuracy}%, rgba(255,255,255,0.1) 0);">
-                        <div class="accuracy-inner">
-                            <div class="accuracy-value">${accuracy.toFixed(1)}%</div>
-                            <div class="accuracy-label">Correlation</div>
-                        </div>
-                    </div>
-                    <div class="accuracy-info">
-                        <p><strong>Difference:</strong> ${difference} AQI points</p>
-                        <p style="font-size: 11px; opacity: 0.7; margin-top: 8px;">
-                            Satellite and ground measurements show ${accuracy > 85 ? 'excellent' : accuracy > 70 ? 'good' : 'moderate'} agreement
-                        </p>
-                    </div>
-                </div>
-            `;
-        }
-    } catch (error) {
-        console.error('Error creating comparison:', error);
-        container.innerHTML = `
-            <p style="text-align: center; opacity: 0.6; padding: 20px;">
-                <i class="fas fa-exclamation-circle"></i><br>
-                Comparison data unavailable
-            </p>
-        `;
-    }
-}
-
-
-// ==================== AI CHAT FUNCTIONS ====================
-
-// Send chat message
-async function sendChatMessage() {
-    const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-    
-    if (!message) return;
-    
-    // Clear input immediately
-    input.value = '';
-    
-    // Display user message
-    displayMessage(message, 'user');
-    
-    // Show typing indicator
-    showTypingIndicator();
-    
-    // Disable input while processing
-    input.disabled = true;
-    document.querySelector('.btn-send').disabled = true;
-    
-    try {
-        const response = await fetch('http://localhost:8000/api/ai-chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                message: message,
-                session_id: chatSessionId,
-                lat: currentLocation.lat,
-                lng: currentLocation.lng
-            })
-        });
-        
-        const data = await response.json();
-        
-        // Remove typing indicator
-        removeTypingIndicator();
-        
-        if (data.status === 'success') {
-            displayMessage(data.response, 'ai');
-            console.log(`💬 Chat response (${data.tokens_used} tokens)`);
-        } else {
-            displayMessage("Sorry, I'm having trouble right now. Please try again!", 'ai');
-        }
-        
-    } catch (error) {
-        console.error('Chat error:', error);
-        removeTypingIndicator();
-        displayMessage("Oops! Connection issue. Please try again.", 'ai');
-    } finally {
-        // Re-enable input
-        input.disabled = false;
-        document.querySelector('.btn-send').disabled = false;
-        input.focus();
-    }
-}
-
-// Quick question handler
-function askQuickQuestion(question) {
-    const input = document.getElementById('chat-input');
-    input.value = question;
-    sendChatMessage();
-}
-
-// Display message in chat
-function displayMessage(text, type) {
-    const messagesContainer = document.getElementById('chat-messages');
-    
-    // Remove welcome message on first user message
-    if (type === 'user') {
-        const welcome = messagesContainer.querySelector('.chat-welcome');
-        if (welcome) {
-            welcome.remove();
-        }
-    }
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message message-${type}`;
-    
-    const bubble = document.createElement('div');
-    bubble.className = 'message-bubble';
-    bubble.textContent = text;
-    
-    messageDiv.appendChild(bubble);
-    messagesContainer.appendChild(messageDiv);
-    
-    // Scroll to bottom
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-// Show typing indicator
-function showTypingIndicator() {
-    const messagesContainer = document.getElementById('chat-messages');
-    
-    const typingDiv = document.createElement('div');
-    typingDiv.className = 'message message-ai';
-    typingDiv.id = 'typing-indicator';
-    
-    const indicator = document.createElement('div');
-    indicator.className = 'typing-indicator';
-    indicator.innerHTML = `
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-    `;
-    
-    typingDiv.appendChild(indicator);
-    messagesContainer.appendChild(typingDiv);
-    
-    // Scroll to bottom
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-// Remove typing indicator
-function removeTypingIndicator() {
-    const indicator = document.getElementById('typing-indicator');
-    if (indicator) {
-        indicator.remove();
-    }
-}
-
-// ==================== END CHAT FUNCTIONS ====================
-
-// Initialize on load
-console.log('🚀 AirCast Enhanced Version Loaded!');
-
-// Event Listeners for Search
-document.addEventListener('DOMContentLoaded', function() {
-    // Search button click
-    const searchBtn = document.querySelector('.btn-search');
-    if (searchBtn) {
-        searchBtn.addEventListener('click', searchLocation);
-    }
-    
-    // Enter key in search box
-    const searchInput = document.getElementById('location-search');
-    if (searchInput) {
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                searchLocation();
-            }
-        });
-    }
-});
-
-// Initialize on load
-console.log('🚀 AirCast Enhanced Version Loaded!');
-
-// Initialize on load
-console.log('🚀 AirCast Enhanced Version Loaded!');
-
-// Event Listeners for Search
-document.addEventListener('DOMContentLoaded', function() {
-    // Search button click
-    const searchBtn = document.querySelector('.btn-search');
-    if (searchBtn) {
-        searchBtn.addEventListener('click', searchLocation);
-    }
-    
-    // Enter key in search box
-    const searchInput = document.getElementById('location-search');
-    if (searchInput) {
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                searchLocation();
-            }
-        });
-    }
-});
-
-// Add this to map.js - Satellite vs Ground Data Comparison
-
-async function createComparisonVisualization() {
-    const container = document.getElementById('comparison-chart');
-    
-    try {
-        const tempoResponse = await fetch(`http://localhost:8000/api/tempo?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
-        const groundResponse = await fetch(`http://localhost:8000/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
-        
-        const tempoData = await tempoResponse.json();
-        const groundData = await groundResponse.json();
-        
-        // Check if TEMPO data is available
-        if (!tempoData.tempo || !tempoData.tempo.available || tempoData.tempo.aqi === null) {
-            container.innerHTML = `
-                <p style="text-align: center; opacity: 0.6; padding: 20px;">
-                    <i class="fas fa-satellite-dish"></i><br><br>
-                    <strong>NASA TEMPO Satellite</strong><br>
-                    Currently processing data...<br>
-                    <small style="opacity: 0.7;">Ground station data available below</small>
-                </p>
-            `;
-            return;
-        }
-        
-        if (tempoData.tempo && groundData.locations && groundData.locations.length > 0) {
             const tempoAQI = tempoData.tempo.aqi;
             const groundAQI = groundData.locations[0].aqi;
             const difference = Math.abs(tempoAQI - groundAQI);
@@ -1527,102 +1097,189 @@ async function createComparisonVisualization() {
     }
 }
 
-// Add CSS for comparison visualization (add to style.css)
-const comparisonStyles = `
-.comparison-bars {
-    margin-bottom: 20px;
+// ==================== FLOATING CHAT FUNCTIONS ====================
+
+// Toggle chat panel visibility
+function toggleChatPanel() {
+    const panel = document.getElementById('floating-chat-panel');
+    const button = document.getElementById('floating-chat-btn');
+    
+    if (panel.classList.contains('active')) {
+        panel.classList.remove('active');
+        button.style.transform = 'translateY(0) scale(1)';
+    } else {
+        panel.classList.add('active');
+        button.style.transform = 'translateY(0) scale(0.9)';
+        // Focus input when opened
+        setTimeout(() => {
+            const input = document.getElementById('chat-input-floating');
+            if (input) input.focus();
+        }, 100);
+    }
 }
 
-.comparison-item {
-    margin-bottom: 15px;
+// Send chat message (works with floating chat)
+async function sendChatMessage() {
+    // Try floating input first, fallback to sidebar input
+    const input = document.getElementById('chat-input-floating') || document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Clear input immediately
+    input.value = '';
+    
+    // Display user message
+    displayMessage(message, 'user');
+    
+    // Show typing indicator
+    showTypingIndicator();
+    
+    // Disable input while processing
+    input.disabled = true;
+    const sendBtn = input.parentElement.querySelector('.btn-send');
+    if (sendBtn) sendBtn.disabled = true;
+    
+    try {
+        const response = await fetch('http://localhost:8000/api/ai-chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                session_id: chatSessionId,
+                lat: currentLocation.lat,
+                lng: currentLocation.lng
+            })
+        });
+        
+        const data = await response.json();
+        
+        // Remove typing indicator
+        removeTypingIndicator();
+        
+        if (data.status === 'success') {
+            displayMessage(data.response, 'ai');
+            console.log(`💬 Chat response (${data.tokens_used} tokens)`);
+        } else {
+            displayMessage("Sorry, I'm having trouble right now. Please try again!", 'ai');
+        }
+        
+    } catch (error) {
+        console.error('Chat error:', error);
+        removeTypingIndicator();
+        displayMessage("Oops! Connection issue. Please try again.", 'ai');
+    } finally {
+        // Re-enable input
+        input.disabled = false;
+        if (sendBtn) sendBtn.disabled = false;
+        input.focus();
+    }
 }
 
-.comparison-label {
-    font-size: 12px;
-    margin-bottom: 8px;
-    opacity: 0.8;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+// Quick question handler
+function askQuickQuestion(question) {
+    const input = document.getElementById('chat-input-floating') || document.getElementById('chat-input');
+    if (input) {
+        input.value = question;
+        sendChatMessage();
+    }
 }
 
-.comparison-bar-container {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    height: 35px;
-    overflow: hidden;
+// Display message in chat
+function displayMessage(text, type) {
+    // Use floating chat messages container
+    const messagesContainer = document.getElementById('chat-messages-floating') || document.getElementById('chat-messages');
+    
+    if (!messagesContainer) return;
+    
+    // Remove welcome message on first user message
+    if (type === 'user') {
+        const welcome = messagesContainer.querySelector('.chat-welcome');
+        if (welcome) {
+            welcome.remove();
+        }
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message message-${type}`;
+    
+    const bubble = document.createElement('div');
+    bubble.className = 'message-bubble';
+    bubble.textContent = text;
+    
+    messageDiv.appendChild(bubble);
+    messagesContainer.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-.comparison-bar {
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 0 12px;
-    border-radius: 10px;
-    transition: width 0.6s ease;
+// Show typing indicator
+function showTypingIndicator() {
+    const messagesContainer = document.getElementById('chat-messages-floating') || document.getElementById('chat-messages');
+    
+    if (!messagesContainer) return;
+    
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message message-ai';
+    typingDiv.id = 'typing-indicator';
+    
+    const indicator = document.createElement('div');
+    indicator.className = 'typing-indicator';
+    indicator.innerHTML = `
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+    `;
+    
+    typingDiv.appendChild(indicator);
+    messagesContainer.appendChild(typingDiv);
+    
+    // Scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-.bar-value {
-    font-weight: 600;
-    font-size: 14px;
-    color: white;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+// Remove typing indicator
+function removeTypingIndicator() {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
 }
 
-.accuracy-metric {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    padding: 15px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    margin-top: 15px;
-}
+// Close chat panel when clicking outside
+document.addEventListener('click', function(event) {
+    const panel = document.getElementById('floating-chat-panel');
+    const button = document.getElementById('floating-chat-btn');
+    
+    if (panel && panel.classList.contains('active')) {
+        if (!panel.contains(event.target) && !button.contains(event.target)) {
+            toggleChatPanel();
+        }
+    }
+});
 
-.accuracy-circle {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-}
+// ==================== EVENT LISTENERS ====================
 
-.accuracy-inner {
-    width: 65px;
-    height: 65px;
-    background: rgba(26, 26, 46, 0.9);
-    border-radius: 50%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.accuracy-value {
-    font-size: 18px;
-    font-weight: 700;
-    color: #667eea;
-}
-
-.accuracy-label {
-    font-size: 10px;
-    opacity: 0.7;
-    margin-top: 2px;
-}
-
-.accuracy-info {
-    flex: 1;
-    font-size: 12px;
-}
-
-.accuracy-info p {
-    margin: 4px 0;
-}
-`;
-
-// Call this function after fetching data
-// Add to fetchAllData() function:
-// await createComparisonVisualization();
+// Initialize on DOM load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 AirCast Enhanced Version Loaded!');
+    
+    // Search button click
+    const searchBtn = document.querySelector('.btn-search');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', searchLocation);
+    }
+    
+    // Enter key in search box
+    const searchInput = document.getElementById('location-search');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchLocation();
+            }
+        });
+    }
+});
