@@ -18,7 +18,12 @@ app = Flask(__name__)
 CORS(app)
 
 # Initialize OpenAI client
-openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+try:
+    openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    print("✅ OpenAI client initialized successfully")
+except Exception as e:
+    print(f"⚠️ OpenAI client failed to initialize: {e}")
+    openai_client = None
 
 # Get absolute path to frontend folder
 FRONTEND_DIR = os.path.join(os.path.dirname(
@@ -352,6 +357,9 @@ Your daily briefs should:
 Avoid technical jargon unless you immediately explain it in simple terms."""
 
         # Call OpenAI
+        if openai_client is None:
+            raise Exception("OpenAI client not initialized")
+        
         response = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -509,6 +517,9 @@ Guidelines:
         })
         
         # Call OpenAI
+        if openai_client is None:
+            raise Exception("OpenAI client not initialized")
+        
         response = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
