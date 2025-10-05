@@ -1138,3 +1138,89 @@ body {
     border-left: 3px solid #00E400;
     background: rgba(0, 228, 0, 0.1);
 }
+/* User Safety Section */
+.user-safety-section {
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(0, 228, 0, 0.1), rgba(102, 126, 234, 0.1));
+    border-radius: 16px;
+    border-left: 4px solid #00E400;
+}
+
+.user-safety-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-group-card {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    transition: all 0.3s;
+}
+
+.user-group-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateX(3px);
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.group-icon {
+    font-size: 20px;
+}
+
+.group-name {
+    flex: 1;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.group-status {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.group-recommendation {
+    font-size: 12px;
+    opacity: 0.9;
+    line-height: 1.4;
+    padding-left: 30px;
+}
+
+.safety-loading {
+    text-align: center;
+    padding: 20px;
+    opacity: 0.6;
+}
+/* Timing Information */
+.timing-info {
+    font-size: 11px;
+    padding: 6px 10px;
+    margin-top: 8px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.timing-info.best {
+    background: rgba(0, 228, 0, 0.15);
+    color: #00E400;
+    border: 1px solid rgba(0, 228, 0, 0.3);
+}
+
+.timing-info.worst {
+    background: rgba(255, 0, 0, 0.15);
+    color: #FF7E00;
+    border: 1px solid rgba(255, 126, 0, 0.3);
+}

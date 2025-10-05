@@ -186,7 +186,8 @@ async function fetchAllData() {
         // Create comparison visualization
         await createComparisonVisualization();
 
-        await calculateBestTimes();
+        await updateUserGroupSafety();
+
         
         showLoadingOverlay(false);
     } catch (error) {
@@ -916,6 +917,85 @@ async function calculateBestTimes() {
         console.error('Error calculating best times:', error);
         container.innerHTML = `
             <h3><i class="fas fa-clock"></i> Best Time Outdoors</h3>
+            <p class="no-safe-times">Unable to calculate recommendations</p>
+        `;
+    }
+}
+
+async function updateUserGroupSafety() {
+    const container = document.getElementById('user-safety-guide');
+    
+    try {
+        const response = await fetch(`http://localhost:8000/api/safety-groups?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const data = await response.json();
+        
+        if (data.status !== 'success') {
+            container.innerHTML = `
+                <h3><i class="fas fa-users"></i> Activity Safety Guide</h3>
+                <p class="no-safe-times">Unable to load safety data</p>
+            `;
+            return;
+        }
+        
+        const currentSafety = data.current_safety;
+        const bestWorstTimes = data.best_worst_times;
+        const groupOrder = ['children', 'adults', 'seniors', 'athletes', 'facilities'];
+        const groupNames = {
+            'children': 'Children (< 12)',
+            'adults': 'Healthy Adults',
+            'seniors': 'Seniors (65+)',
+            'athletes': 'Sports/Practice',
+            'facilities': 'Care Facilities'
+        };
+        
+        let groupsHTML = groupOrder.map(groupKey => {
+            const group = currentSafety[groupKey];
+            const timing = bestWorstTimes[groupKey];
+            const statusIcon = group.status === 'safe' ? '✓' : group.status === 'caution' ? '⚠️' : '✗';
+            
+            // Format best/worst time messages
+            const currentHour = new Date().getHours();
+            const bestTimeHour = (currentHour + timing.best.hour) % 24;
+            const worstTimeHour = (currentHour + timing.worst.hour) % 24;
+            
+            const formatHour = (h) => {
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                const display = h % 12 || 12;
+                return `${display}${ampm}`;
+            };
+            
+            let timingHTML = '';
+            if (timing.best.hour > 0) {
+                timingHTML += `<div class="timing-info best">✓ Best: ${formatHour(bestTimeHour)} (AQI ${timing.best.aqi})</div>`;
+            }
+            if (timing.worst.hour > 0 && timing.worst.status !== 'safe') {
+                timingHTML += `<div class="timing-info worst">✗ Avoid: ${formatHour(worstTimeHour)} (AQI ${timing.worst.aqi})</div>`;
+            }
+            
+            return `
+                <div class="user-group-card" style="border-left: 4px solid ${group.color};">
+                    <div class="group-header">
+                        <span class="group-icon">${group.icon}</span>
+                        <span class="group-name">${groupNames[groupKey]}</span>
+                        <span class="group-status" style="color: ${group.color};">${statusIcon}</span>
+                    </div>
+                    <div class="group-recommendation">${group.recommendation}</div>
+                    ${timingHTML}
+                </div>
+            `;
+        }).join('');
+        
+        container.innerHTML = `
+            <h3><i class="fas fa-users"></i> Activity Safety Guide</h3>
+            ${groupsHTML}
+        `;
+        
+        console.log('✅ User group safety updated');
+        
+    } catch (error) {
+        console.error('Error updating user group safety:', error);
+        container.innerHTML = `
+            <h3><i class="fas fa-users"></i> Activity Safety Guide</h3>
             <p class="no-safe-times">Unable to calculate recommendations</p>
         `;
     }
