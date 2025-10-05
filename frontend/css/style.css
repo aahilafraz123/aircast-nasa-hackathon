@@ -1134,3 +1134,7 @@ body {
         transform: translateY(0);
     }
 }
+.alert-item.info {
+    border-left: 3px solid #00E400;
+    background: rgba(0, 228, 0, 0.1);
+}

@@ -502,40 +502,86 @@ function updatePollutantData(measurements) {
 }
 
 // Update Health Alerts
-function updateHealthAlerts(aqi) {
+async function updateHealthAlerts(currentAqi) {
     const container = document.getElementById('health-alerts');
-    let alerts = [];
     
-    if (aqi > 200) {
-        alerts.push({
-            level: 'danger',
-            text: '🚨 HAZARDOUS AIR QUALITY - Everyone should avoid all outdoor activities'
-        });
-    } else if (aqi > 150) {
-        alerts.push({
-            level: 'danger',
-            text: '⚠️ UNHEALTHY - Sensitive groups should avoid outdoor activities'
-        });
-    } else if (aqi > 100) {
-        alerts.push({
-            level: 'warning',
-            text: '⚠️ Unhealthy for sensitive groups - Consider reducing prolonged outdoor exertion'
-        });
-    } else if (aqi > 50) {
-        alerts.push({
-            level: 'warning',
-            text: 'ℹ️ Moderate air quality - Unusually sensitive people should consider reducing prolonged outdoor exertion'
-        });
+    try {
+        // Fetch forecast data to find peaks and improvements
+        const response = await fetch(`http://localhost:8000/api/forecast?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const data = await response.json();
+        
+        if (!data.forecast || data.forecast.length === 0) {
+            container.innerHTML = `
+                <h3><i class="fas fa-triangle-exclamation"></i> Health Alerts</h3>
+                <div class="alert-placeholder">Unable to generate forecast alerts</div>
+            `;
+            return;
+        }
+        
+        const forecast = data.forecast;
+        let alerts = [];
+        
+        // Find worst AQI in next 6 hours
+        const worstForecast = forecast.reduce((max, f) => f.aqi > max.aqi ? f : max, forecast[0]);
+        
+        // Find best AQI in next 6 hours
+        const bestForecast = forecast.reduce((min, f) => f.aqi < min.aqi ? f : min, forecast[0]);
+        
+        // Current condition alert
+        if (currentAqi > 150) {
+            alerts.push({
+                level: 'danger',
+                text: `🚨 Currently ${currentAqi} AQI - Avoid outdoor activities`
+            });
+        } else if (currentAqi > 100) {
+            alerts.push({
+                level: 'warning',
+                text: `⚠️ Currently ${currentAqi} AQI - Sensitive groups use caution`
+            });
+        }
+        
+        // Peak forecast alert (if significantly different from current)
+        if (worstForecast.aqi > currentAqi + 15) {
+            const peakTime = `in ${worstForecast.hour} hour${worstForecast.hour > 1 ? 's' : ''}`;
+            alerts.push({
+                level: 'warning',
+                text: `🔮 AQI will peak at ${worstForecast.aqi} ${peakTime} - ${worstForecast.reason}`
+            });
+        }
+        
+        // Best window alert (if significantly better than current)
+        if (bestForecast.aqi < currentAqi - 15) {
+            const bestTime = `in ${bestForecast.hour} hour${bestForecast.hour > 1 ? 's' : ''}`;
+            alerts.push({
+                level: 'info',
+                text: `💨 Best outdoor window: ${bestTime} when AQI improves to ${bestForecast.aqi} - ${bestForecast.reason}`
+            });
+        }
+        
+        // If no significant changes, show stable conditions
+        if (alerts.length === 0 || (alerts.length === 1 && currentAqi <= 100)) {
+            alerts.push({
+                level: 'info',
+                text: `✅ Air quality expected to remain ${currentAqi <= 50 ? 'good' : 'moderate'} throughout the day`
+            });
+        }
+        
+        const alertsHTML = alerts.map(alert => 
+            `<div class="alert-item ${alert.level}">${alert.text}</div>`
+        ).join('');
+        
+        container.innerHTML = `
+            <h3><i class="fas fa-triangle-exclamation"></i> Health Alerts</h3>
+            ${alertsHTML}
+        `;
+        
+    } catch (error) {
+        console.error('Error updating health alerts:', error);
+        container.innerHTML = `
+            <h3><i class="fas fa-triangle-exclamation"></i> Health Alerts</h3>
+            <div class="alert-placeholder">Unable to load forecast data</div>
+        `;
     }
-    
-    const alertsHTML = alerts.length > 0 ? 
-        alerts.map(alert => `<div class="alert-item ${alert.level}">${alert.text}</div>`).join('') :
-        '<div class="alert-placeholder">✅ No active health alerts</div>';
-    
-    container.innerHTML = `
-        <h3><i class="fas fa-triangle-exclamation"></i> Health Alerts</h3>
-        ${alertsHTML}
-    `;
 }
 
 // Create Forecast Chart
