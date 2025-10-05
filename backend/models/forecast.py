@@ -45,9 +45,95 @@ def get_forecast_reasoning(predicted_aqi, base_aqi, weather, hour):
         return "Stable conditions"
 
 
+def generate_weather_impacts(weather_forecast):
+    """Generate weather impact descriptions for display"""
+    impacts = []
+
+    if not weather_forecast or len(weather_forecast) == 0:
+        return impacts
+
+    # Analyze first forecast period
+    first = weather_forecast[0]
+
+    # Wind impact
+    wind_speed = first.get('wind_speed', 0)
+    if wind_speed > 15:
+        impacts.append({
+            'factor': 'Strong Winds',
+            'direction': 'improving',
+            'description': f'{int(wind_speed)} mph winds actively dispersing pollutants'
+        })
+    elif wind_speed > 10:
+        impacts.append({
+            'factor': 'Moderate Winds',
+            'direction': 'improving',
+            'description': f'{int(wind_speed)} mph winds helping clear the air'
+        })
+    elif wind_speed < 5:
+        impacts.append({
+            'factor': 'Light Winds',
+            'direction': 'worsening',
+            'description': 'Low wind speeds allowing pollutants to accumulate'
+        })
+
+    # Temperature impact
+    temp = first.get('temperature', 70)
+    if temp > 85:
+        impacts.append({
+            'factor': 'High Temperature',
+            'direction': 'worsening',
+            'description': f'{int(temp)}°F heat increasing ozone formation'
+        })
+    elif temp > 75:
+        impacts.append({
+            'factor': 'Warm Weather',
+            'direction': 'worsening',
+            'description': f'{int(temp)}°F temperatures contributing to pollution'
+        })
+
+    # Precipitation impact
+    precip = first.get('precipitation', 0)
+    if precip > 0:
+        impacts.append({
+            'factor': 'Precipitation',
+            'direction': 'improving',
+            'description': 'Rain actively removing particulates from the air'
+        })
+
+    # Humidity impact
+    humidity = first.get('humidity', 50)
+    if humidity > 80:
+        impacts.append({
+            'factor': 'High Humidity',
+            'direction': 'worsening',
+            'description': f'{humidity}% humidity increasing particle formation'
+        })
+
+    # Time of day impact
+    current_hour = datetime.now().hour
+    if 7 <= current_hour <= 9 or 16 <= current_hour <= 19:
+        impacts.append({
+            'factor': 'Rush Hour',
+            'direction': 'worsening',
+            'description': 'Peak traffic increasing vehicle emissions'
+        })
+    elif 22 <= current_hour or current_hour <= 5:
+        impacts.append({
+            'factor': 'Night Hours',
+            'direction': 'improving',
+            'description': 'Reduced traffic and human activity'
+        })
+
+    return impacts
+
+
 def forecast_air_quality(current_aqi, weather_forecast, hours_ahead=6):
     """
     Predict future AQI based on current conditions and weather
+    Returns: {
+        'predictions': [...],
+        'weather_impacts': [...]
+    }
     """
     predictions = []
     base_aqi = current_aqi
@@ -104,13 +190,19 @@ def forecast_air_quality(current_aqi, weather_forecast, hours_ahead=6):
             'time': weather.get('time', ''),
             'aqi': final_aqi,
             'level': get_aqi_level(final_aqi),
-            'reason': reason  # NEW FIELD
+            'reason': reason
         })
 
         # Use this prediction as base for next hour (creates trending)
         base_aqi = predicted_aqi * 0.9  # Slight decay factor
 
-    return predictions
+    # Generate weather impacts
+    weather_impacts = generate_weather_impacts(weather_forecast)
+
+    return {
+        'predictions': predictions,
+        'weather_impacts': weather_impacts
+    }
 
 
 def get_aqi_level(aqi):

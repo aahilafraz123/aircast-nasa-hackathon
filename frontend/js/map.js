@@ -232,8 +232,9 @@ async function fetchForecastData() {
         const data = await response.json();
         
         if (data.status === 'success' && data.forecast) {
-            createForecastChart(data.forecast);
+            createForecastChart(data.forecast, data.weather_impacts || []);
             console.log('✅ Forecast data loaded');
+            console.log('Weather impacts:', data.weather_impacts);
         }
     } catch (error) {
         console.error('❌ Error fetching forecast:', error);
@@ -586,11 +587,38 @@ async function updateHealthAlerts(currentAqi) {
 }
 
 // Create Forecast Chart
-function createForecastChart(forecastData) {
+function createForecastChart(forecastData, weatherImpacts = []) {
     const ctx = document.getElementById('forecast-chart');
     
     if (forecastChart) {
         forecastChart.destroy();
+    }
+    
+    // Display weather impacts above chart
+    const impactsContainer = document.getElementById('weather-impacts');
+    if (impactsContainer && weatherImpacts && weatherImpacts.length > 0) {
+        const impactsHTML = weatherImpacts.map(impact => {
+            let arrow, color;
+            if (impact.direction === 'improving') {
+                arrow = '↓';
+                color = '#00E400';
+            } else if (impact.direction === 'worsening') {
+                arrow = '↑';
+                color = '#FF7E00';
+            } else {
+                arrow = '→';
+                color = '#999';
+            }
+            
+            return `
+                <div class="weather-impact-item" style="color: ${color};">
+                    <span class="impact-arrow">${arrow}</span>
+                    <span class="impact-text">${impact.description}</span>
+                </div>
+            `;
+        }).join('');
+        
+        impactsContainer.innerHTML = impactsHTML;
     }
     
     const labels = forecastData.map(f => `+${f.hour}h`);

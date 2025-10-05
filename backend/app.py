@@ -141,18 +141,30 @@ def get_forecast():
             locations) > 0 else 65
 
         weather_data = get_weather_forecast(lat, lon)
-        forecast = forecast_air_quality(
-            current_aqi, weather_data if weather_data else [], hours_ahead=6)
+        limited_weather = weather_data[:6] if weather_data else []
+        forecast_result = forecast_air_quality(
+            current_aqi, limited_weather, hours_ahead=6)
+
+        if isinstance(forecast_result, dict):
+            forecast_data = forecast_result.get('predictions', [])
+            weather_impacts = forecast_result.get('weather_impacts', [])
+        else:
+            forecast_data = forecast_result
+            weather_impacts = []
 
         return jsonify({
             "status": "success",
             "current_aqi": current_aqi,
-            "forecast": forecast
+            "forecast": forecast_result['predictions'],
+            "weather_impacts": forecast_result['weather_impacts']
         })
     except Exception as e:
         print(f"❌ ERROR in forecast endpoint: {str(e)}")
         print(traceback.format_exc())
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 
 @app.route('/api/safety-groups')
@@ -170,8 +182,12 @@ def get_safety_groups():
 
         # Get 6-hour forecast
         weather_data = get_weather_forecast(lat, lon)
-        forecast = forecast_air_quality(
+        forecast_result = forecast_air_quality(
             current_aqi, weather_data if weather_data else [], hours_ahead=6)
+
+        # Extract predictions from the new dictionary structure
+        forecast = forecast_result.get('predictions', []) if isinstance(
+            forecast_result, dict) else forecast_result
 
         # Import user groups function
         from models.user_groups import get_safety_by_user_group
@@ -189,32 +205,42 @@ def get_safety_groups():
             })
 
         # Find best and worst times for each group
+        # Find best and worst times for each group
         group_keys = ['children', 'adults',
                       'seniors', 'athletes', 'facilities']
         best_worst_times = {}
 
-        for group_key in group_keys:
-            # Find safest hour (lowest AQI where status is 'safe' or lowest overall)
-            safe_hours = [f for f in forecast_safety if f['groups']
-                          [group_key]['status'] == 'safe']
-            best_hour = min(safe_hours, key=lambda x: x['aqi']) if safe_hours else min(
-                forecast_safety, key=lambda x: x['aqi'])
+        # Only calculate if we have forecast data
+        if forecast_safety and len(forecast_safety) > 0:
+            for group_key in group_keys:
+                # Find safest hour (lowest AQI where status is 'safe' or lowest overall)
+                safe_hours = [f for f in forecast_safety if f['groups']
+                              [group_key]['status'] == 'safe']
+                best_hour = min(safe_hours, key=lambda x: x['aqi']) if safe_hours else min(
+                    forecast_safety, key=lambda x: x['aqi'])
 
-            # Find worst hour (highest AQI)
-            worst_hour = max(forecast_safety, key=lambda x: x['aqi'])
+                # Find worst hour (highest AQI)
+                worst_hour = max(forecast_safety, key=lambda x: x['aqi'])
 
-            best_worst_times[group_key] = {
-                'best': {
-                    'hour': best_hour['hour'],
-                    'aqi': best_hour['aqi'],
-                    'status': best_hour['groups'][group_key]['status']
-                },
-                'worst': {
-                    'hour': worst_hour['hour'],
-                    'aqi': worst_hour['aqi'],
-                    'status': worst_hour['groups'][group_key]['status']
+                best_worst_times[group_key] = {
+                    'best': {
+                        'hour': best_hour['hour'],
+                        'aqi': best_hour['aqi'],
+                        'status': best_hour['groups'][group_key]['status']
+                    },
+                    'worst': {
+                        'hour': worst_hour['hour'],
+                        'aqi': worst_hour['aqi'],
+                        'status': worst_hour['groups'][group_key]['status']
+                    }
                 }
-            }
+        else:
+            # Provide default values if no forecast available
+            for group_key in group_keys:
+                best_worst_times[group_key] = {
+                    'best': {'hour': 0, 'aqi': current_aqi, 'status': 'caution'},
+                    'worst': {'hour': 0, 'aqi': current_aqi, 'status': 'caution'}
+                }
 
         return jsonify({
             "status": "success",

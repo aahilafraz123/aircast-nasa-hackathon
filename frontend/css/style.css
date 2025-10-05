@@ -1224,3 +1224,100 @@ body {
     color: #FF7E00;
     border: 1px solid rgba(255, 126, 0, 0.3);
 }
+/* Weather Impact Indicators */
+.weather-impacts-section {
+    margin-bottom: 15px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.weather-impact-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.impact-arrow {
+    font-size: 18px;
+    font-weight: 700;
+    min-width: 20px;
+}
+
+.impact-text {
+    flex: 1;
+}
+/* Weather Impacts Section */
+.weather-impacts-section {
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.weather-impacts-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.impact-item {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.impact-item:last-child {
+    margin-bottom: 0;
+}
+/* Weather Impacts Section */
+.weather-impacts-section {
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.weather-impacts-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.weather-impact-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.weather-impact-item:last-child {
+    margin-bottom: 0;
+}
+
+.impact-arrow {
+    font-size: 18px;
+    font-weight: bold;
+    min-width: 20px;
+}
+
+.impact-text {
+    flex: 1;
+}
