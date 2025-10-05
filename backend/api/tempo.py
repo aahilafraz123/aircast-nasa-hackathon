@@ -1,4 +1,6 @@
 import os
+import requests
+from io import BytesIO
 
 try:
     import netCDF4 as nc
@@ -8,55 +10,62 @@ except ImportError:
     TEMPO_AVAILABLE = False
     print("⚠️ netCDF4 not installed - TEMPO satellite data disabled")
 
-# Use relative path from this file's location
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPO_FILE = os.path.join(CURRENT_DIR, '..', 'data',
-                          'TEMPO_NO2_L2_V04_20251004T164423Z_S007G03.nc')
+# Azure Blob Storage URL - get from environment variable
+TEMPO_BLOB_URL = os.getenv('TEMPO_BLOB_URL', 
+    'https://aircasttempo.blob.core.windows.net/tempo-data/TEMPO_NO2_L2_V04_20251004T164423Z_S007G03.nc')
 
 
 def explore_tempo_structure():
-    """Explore TEMPO file structure"""
+    """Explore TEMPO file structure from Azure Blob Storage"""
     if not TEMPO_AVAILABLE:
         print("TEMPO unavailable - netCDF4 not installed")
         return
 
-    if not os.path.exists(TEMPO_FILE):
-        print(f"⚠️ TEMPO file not found at: {TEMPO_FILE}")
-        return
+    try:
+        print(f"Downloading TEMPO file from Azure...")
+        response = requests.get(TEMPO_BLOB_URL, timeout=30)
+        response.raise_for_status()
+        
+        file_data = BytesIO(response.content)
+        dataset = nc.Dataset('tempo-memory', mode='r', memory=file_data.read())
 
-    dataset = nc.Dataset(TEMPO_FILE, 'r')
+        print("=== ROOT VARIABLES ===")
+        print(list(dataset.variables.keys()))
 
-    print("=== ROOT VARIABLES ===")
-    print(list(dataset.variables.keys()))
+        print("\n=== GROUPS ===")
+        print(list(dataset.groups.keys()))
 
-    print("\n=== GROUPS ===")
-    print(list(dataset.groups.keys()))
+        if 'geolocation' in dataset.groups:
+            print("\n=== GEOLOCATION GROUP ===")
+            print(list(dataset.groups['geolocation'].variables.keys()))
 
-    # Check if there are groups with geolocation data
-    if 'geolocation' in dataset.groups:
-        print("\n=== GEOLOCATION GROUP ===")
-        print(list(dataset.groups['geolocation'].variables.keys()))
+        if 'product' in dataset.groups:
+            print("\n=== PRODUCT GROUP ===")
+            print(list(dataset.groups['product'].variables.keys()))
 
-    if 'product' in dataset.groups:
-        print("\n=== PRODUCT GROUP ===")
-        print(list(dataset.groups['product'].variables.keys()))
-
-    dataset.close()
+        dataset.close()
+    except Exception as e:
+        print(f"⚠️ Error exploring TEMPO structure: {e}")
 
 
 def read_tempo_netcdf():
-    """Read and process TEMPO NetCDF file"""
+    """Read and process TEMPO NetCDF file from Azure Blob Storage"""
     if not TEMPO_AVAILABLE:
         print("⚠️ netCDF4 not available")
         return None
 
-    if not os.path.exists(TEMPO_FILE):
-        print(f"⚠️ TEMPO file not found at: {TEMPO_FILE}")
-        return None
-
     try:
-        print(f"📡 Reading TEMPO file: {TEMPO_FILE}")
-        dataset = nc.Dataset(TEMPO_FILE, 'r')
+        print(f"📡 Downloading TEMPO file from Azure Blob Storage...")
+        
+        # Download file from Azure Blob
+        response = requests.get(TEMPO_BLOB_URL, timeout=30)
+        response.raise_for_status()
+        
+        # Load into memory
+        file_data = BytesIO(response.content)
+        
+        print(f"📡 Opening TEMPO dataset...")
+        dataset = nc.Dataset('tempo-memory', mode='r', memory=file_data.read())
 
         # TEMPO uses groups - geolocation is in a separate group
         geoloc = dataset.groups['geolocation']
@@ -68,7 +77,7 @@ def read_tempo_netcdf():
 
         dataset.close()
 
-        print(f"✅ TEMPO data loaded successfully!")
+        print(f"✅ TEMPO data loaded successfully from Azure!")
 
         return {
             'latitude': lat,
@@ -77,7 +86,7 @@ def read_tempo_netcdf():
             'units': 'molecules/cm²'
         }
     except Exception as e:
-        print(f"❌ Error reading TEMPO file: {e}")
+        print(f"❌ Error reading TEMPO file from Azure: {e}")
         return None
 
 
@@ -91,17 +100,6 @@ def get_tempo_value_at_location(lat, lon):
             'latitude': lat,
             'longitude': lon,
             'source': 'NASA TEMPO (Unavailable - netCDF4 not installed)',
-            'available': False
-        }
-
-    if not os.path.exists(TEMPO_FILE):
-        print(f"⚠️ TEMPO file not found at: {TEMPO_FILE}")
-        return {
-            'no2_column': None,
-            'aqi': None,
-            'latitude': lat,
-            'longitude': lon,
-            'source': 'NASA TEMPO (File not found)',
             'available': False
         }
 
