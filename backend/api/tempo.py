@@ -1,10 +1,19 @@
-import netCDF4 as nc
-import numpy as np
+try:
+    import netCDF4 as nc
+    import numpy as np
+    TEMPO_AVAILABLE = True
+except ImportError:
+    TEMPO_AVAILABLE = False
+    print("⚠️ netCDF4 not installed - TEMPO satellite data disabled")
 
 TEMPO_FILE = r"C:\Users\aahil\Downloads\TEMPO_NO2_L2_V04_20251004T164423Z_S007G03.nc"
 
 def explore_tempo_structure():
     """Explore TEMPO file structure"""
+    if not TEMPO_AVAILABLE:
+        print("TEMPO unavailable - netCDF4 not installed")
+        return
+    
     dataset = nc.Dataset(TEMPO_FILE, 'r')
     
     print("=== ROOT VARIABLES ===")
@@ -26,6 +35,9 @@ def explore_tempo_structure():
 
 def read_tempo_netcdf():
     """Read and process TEMPO NetCDF file"""
+    if not TEMPO_AVAILABLE:
+        return None
+    
     try:
         dataset = nc.Dataset(TEMPO_FILE, 'r')
         
@@ -51,10 +63,27 @@ def read_tempo_netcdf():
 
 def get_tempo_value_at_location(lat, lon):
     """Extract TEMPO NO2 value at specific coordinates"""
+    if not TEMPO_AVAILABLE:
+        return {
+            'no2_column': None,
+            'aqi': None,
+            'latitude': lat,
+            'longitude': lon,
+            'source': 'NASA TEMPO (Unavailable - netCDF4 not installed)',
+            'available': False
+        }
+    
     tempo_data = read_tempo_netcdf()
     
     if not tempo_data:
-        return None
+        return {
+            'no2_column': None,
+            'aqi': None,
+            'latitude': lat,
+            'longitude': lon,
+            'source': 'NASA TEMPO (Data Error)',
+            'available': False
+        }
     
     lats = tempo_data['latitude']
     lons = tempo_data['longitude']
@@ -74,7 +103,8 @@ def get_tempo_value_at_location(lat, lon):
         'aqi': aqi,
         'latitude': float(lats[idx]),
         'longitude': float(lons[idx]),
-        'source': 'NASA TEMPO'
+        'source': 'NASA TEMPO',
+        'available': True
     }
 
 def convert_no2_to_aqi(no2_column):

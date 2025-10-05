@@ -1,6 +1,7 @@
 import requests
 import os
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv()
 
@@ -9,24 +10,34 @@ BASE_URL = "https://api.openaq.org/v3"
 
 def get_latest_measurements(lat, lon, radius_km=25):
     """Get latest air quality measurements using OpenAQ v3"""
+    print(f"🔍 Fetching OpenAQ data for ({lat}, {lon}) within {radius_km}km...")
+    
     locations_url = f"{BASE_URL}/locations"
     params = {
         'limit': 20,
-        'radius': radius_km * 1000,
+        'radius': radius_km * 1000,  # Convert to meters
         'coordinates': f"{lat},{lon}"
     }
     
     headers = {}
     if OPENAQ_API_KEY:
         headers['X-API-Key'] = OPENAQ_API_KEY
+        print("🔑 Using OpenAQ API key")
+    else:
+        print("⚠️ No OpenAQ API key found, using public access")
     
     try:
         response = requests.get(locations_url, params=params, headers=headers, timeout=10)
+        print(f"📡 OpenAQ API response status: {response.status_code}")
+        
         response.raise_for_status()
         locations_data = response.json()
         
         if not locations_data or 'results' not in locations_data:
+            print("⚠️ No results in OpenAQ response, using sample data")
             return generate_sample_data(lat, lon)
+        
+        print(f"✅ Found {len(locations_data['results'])} locations from OpenAQ")
         
         all_locations = []
         for location in locations_data['results'][:5]:  # Limit to 5 stations
@@ -41,60 +52,89 @@ def get_latest_measurements(lat, lon, radius_km=25):
                 processed = process_location_with_measurements(location, latest_data)
                 if processed:
                     all_locations.append(processed)
+                    print(f"  ✓ Processed: {processed['name']} (AQI: {processed['aqi']})")
         
-        return all_locations if all_locations else generate_sample_data(lat, lon)
+        if all_locations:
+            print(f"✅ Successfully processed {len(all_locations)} locations")
+            return all_locations
+        else:
+            print("⚠️ No locations could be processed, using sample data")
+            return generate_sample_data(lat, lon)
+            
+    except requests.Timeout:
+        print(f"⏱️ OpenAQ API timeout, using sample data")
+        return generate_sample_data(lat, lon)
+    except requests.RequestException as e:
+        print(f"🌐 OpenAQ API request error: {e}, using sample data")
+        return generate_sample_data(lat, lon)
     except Exception as e:
-        print(f"OpenAQ Error: {e}")
+        print(f"❌ OpenAQ Error: {e}, using sample data")
         return generate_sample_data(lat, lon)
 
 def process_location_with_measurements(location, latest_data):
     """Process a location with its measurements"""
-    coords = location.get('coordinates', {})
-    if not coords:
-        return None
-    
-    measurements = {}
-    aqi_value = 65  # Default moderate value instead of 50
-    
-    if 'results' in latest_data:
-        for result in latest_data['results']:
-            param = result.get('parameter', {}).get('name')
-            value = result.get('value')
-            
-            if param and value:
-                measurements[param] = value
+    try:
+        coords = location.get('coordinates', {})
+        if not coords:
+            print(f"  ⚠️ No coordinates for location: {location.get('name', 'Unknown')}")
+            return None
+        
+        measurements = {}
+        aqi_value = 65  # Default moderate value
+        
+        if 'results' in latest_data:
+            for result in latest_data['results']:
+                param = result.get('parameter', {}).get('name')
+                value = result.get('value')
                 
-                if param == 'pm25':
-                    aqi_value = pm25_to_aqi(value)
-    
-    # If no measurements, add estimated values based on typical urban air
-    if not measurements:
-        measurements = {'pm25': 12.5, 'o3': 0.045, 'no2': 0.03}
-        aqi_value = 65
-    
-    return {
-        'name': location.get('name', 'Unknown Station'),
-        'lat': coords.get('latitude'),
-        'lng': coords.get('longitude'),
-        'aqi': aqi_value,
-        'level': get_aqi_level(aqi_value),
-        'timestamp': location.get('datetimeLast', {}).get('utc', ''),
-        'measurements': measurements,
-        'source': 'OpenAQ'
-    }
+                if param and value is not None:
+                    measurements[param] = value
+                    
+                    if param == 'pm25':
+                        aqi_value = pm25_to_aqi(value)
+        
+        # If no measurements, add estimated values
+        if not measurements:
+            measurements = {
+                'pm25': 12.5,
+                'o3': 45.0,
+                'no2': 30.0
+            }
+            aqi_value = 65
+        
+        return {
+            'name': location.get('name', 'Unknown Station'),
+            'lat': coords.get('latitude'),
+            'lng': coords.get('longitude'),
+            'aqi': aqi_value,
+            'level': get_aqi_level(aqi_value),
+            'timestamp': location.get('datetimeLast', {}).get('utc', datetime.now().isoformat()),
+            'measurements': measurements,
+            'source': 'OpenAQ'
+        }
+    except Exception as e:
+        print(f"  ❌ Error processing location: {e}")
+        return None
 
 def pm25_to_aqi(pm25):
-    """Convert PM2.5 to AQI"""
-    if pm25 <= 12.0:
-        return int((50/12.0) * pm25)
-    elif pm25 <= 35.4:
-        return int(50 + ((100-50)/(35.4-12.1)) * (pm25-12.1))
-    elif pm25 <= 55.4:
-        return int(100 + ((150-100)/(55.4-35.5)) * (pm25-35.5))
-    elif pm25 <= 150.4:
-        return int(150 + ((200-150)/(150.4-55.5)) * (pm25-55.5))
-    else:
-        return 200
+    """Convert PM2.5 to AQI using EPA breakpoints"""
+    try:
+        pm25 = float(pm25)
+        
+        if pm25 <= 12.0:
+            return int((50/12.0) * pm25)
+        elif pm25 <= 35.4:
+            return int(50 + ((100-50)/(35.4-12.1)) * (pm25-12.1))
+        elif pm25 <= 55.4:
+            return int(100 + ((150-100)/(55.4-35.5)) * (pm25-35.5))
+        elif pm25 <= 150.4:
+            return int(150 + ((200-150)/(150.4-55.5)) * (pm25-55.5))
+        elif pm25 <= 250.4:
+            return int(200 + ((300-200)/(250.4-150.5)) * (pm25-150.5))
+        else:
+            return min(int(300 + ((500-300)/(500.4-250.5)) * (pm25-250.5)), 500)
+    except:
+        return 65
 
 def get_aqi_level(aqi):
     """Get AQI category name"""
@@ -113,25 +153,48 @@ def get_aqi_level(aqi):
 
 def generate_sample_data(lat, lon):
     """Fallback sample data for testing"""
+    print("📋 Generating sample data...")
     return [
         {
             'name': 'Philadelphia North Station',
-            'lat': lat + 0.1,
-            'lng': lon,
+            'lat': lat + 0.02,
+            'lng': lon + 0.01,
             'aqi': 75,
             'level': 'Moderate',
-            'timestamp': '2024-10-04T17:00:00Z',
-            'measurements': {'pm25': 15.2, 'no2': 42},
+            'timestamp': datetime.now().isoformat(),
+            'measurements': {
+                'pm25': 15.2,
+                'no2': 42.0,
+                'o3': 38.0
+            },
+            'source': 'Sample Data'
+        },
+        {
+            'name': 'Philadelphia Center Station',
+            'lat': lat,
+            'lng': lon,
+            'aqi': 65,
+            'level': 'Moderate',
+            'timestamp': datetime.now().isoformat(),
+            'measurements': {
+                'pm25': 12.5,
+                'no2': 35.0,
+                'o3': 45.0
+            },
             'source': 'Sample Data'
         },
         {
             'name': 'Philadelphia South Station',
-            'lat': lat - 0.1,
-            'lng': lon,
-            'aqi': 45,
-            'level': 'Good',
-            'timestamp': '2024-10-04T17:00:00Z',
-            'measurements': {'pm25': 8.5, 'no2': 28},
+            'lat': lat - 0.02,
+            'lng': lon - 0.01,
+            'aqi': 52,
+            'level': 'Moderate',
+            'timestamp': datetime.now().isoformat(),
+            'measurements': {
+                'pm25': 10.8,
+                'no2': 28.0,
+                'o3': 42.0
+            },
             'source': 'Sample Data'
         }
     ]

@@ -977,3 +977,113 @@ body {
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
+
+/* AQI Legend in Sidebar */
+.aqi-legend {
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+}
+
+.aqi-legend h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.aqi-legend .legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.aqi-legend .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+}
+
+.aqi-legend .legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+/* Best Time to Go Outside Section */
+.best-time-section {
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(0, 228, 0, 0.1), rgba(102, 126, 234, 0.1));
+    border-radius: 16px;
+    border-left: 4px solid #00E400;
+}
+
+.best-time-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.time-slot {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+.time-slot .time-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.time-slot .time-range {
+    font-weight: 600;
+    font-size: 14px;
+    color: #00E400;
+}
+
+.time-slot .time-aqi {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.time-slot .age-groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.age-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.age-badge.all { background: #00E400; color: #000; }
+.age-badge.children { background: #4CAF50; }
+.age-badge.adults { background: #2196F3; }
+.age-badge.warning { background: #FF7E00; }
+
+.time-loading {
+    text-align: center;
+    padding: 20px;
+    opacity: 0.6;
+}
+
+.no-safe-times {
+    text-align: center;
+    padding: 15px;
+    opacity: 0.7;
+    font-size: 13px;
+    color: #FF7E00;
+}

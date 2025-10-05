@@ -46,6 +46,87 @@ function initMap() {
     console.log('✅ Enhanced map initialized!');
 }
 
+// Search Location Function
+async function searchLocation() {
+    const searchInput = document.getElementById('location-search');
+    const query = searchInput.value.trim();
+    
+    if (!query) {
+        alert('Please enter a location');
+        return;
+    }
+    
+    // Check if it's coordinates (lat, lon format)
+    const coordPattern = /^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/;
+    const coordMatch = query.match(coordPattern);
+    
+    if (coordMatch) {
+        // Direct coordinates
+        const lat = parseFloat(coordMatch[1]);
+        const lng = parseFloat(coordMatch[2]);
+        
+        currentLocation = { lat, lng };
+        map.setCenter(currentLocation);
+        map.setZoom(11);
+        
+        // Add blue marker at location
+        new google.maps.Marker({
+            position: currentLocation,
+            map: map,
+            title: "Searched Location",
+            icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 12,
+                fillColor: '#4285F4',
+                fillOpacity: 1,
+                strokeColor: 'white',
+                strokeWeight: 4
+            },
+            animation: google.maps.Animation.DROP
+        });
+        
+        fetchAllData();
+        console.log('📍 Moved to coordinates:', currentLocation);
+    } else {
+        // Use Google Geocoding API
+        const geocoder = new google.maps.Geocoder();
+        
+        geocoder.geocode({ address: query }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                const location = results[0].geometry.location;
+                currentLocation = {
+                    lat: location.lat(),
+                    lng: location.lng()
+                };
+                
+                map.setCenter(currentLocation);
+                map.setZoom(11);
+                
+                // Add marker at searched location
+                new google.maps.Marker({
+                    position: currentLocation,
+                    map: map,
+                    title: results[0].formatted_address,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 12,
+                        fillColor: '#4285F4',
+                        fillOpacity: 1,
+                        strokeColor: 'white',
+                        strokeWeight: 4
+                    },
+                    animation: google.maps.Animation.DROP
+                });
+                
+                fetchAllData();
+                console.log('📍 Moved to:', results[0].formatted_address);
+            } else {
+                alert('Location not found. Try: "New York, NY" or "40.7128, -74.0060"');
+            }
+        });
+    }
+}
+
 // Get User Location
 function getUserLocation() {
     if (navigator.geolocation) {
@@ -104,6 +185,8 @@ async function fetchAllData() {
         
         // Create comparison visualization
         await createComparisonVisualization();
+
+        await calculateBestTimes();
         
         showLoadingOverlay(false);
     } catch (error) {
@@ -707,6 +790,150 @@ function closeInfoWindow() {
         infoWindow.close();
     }
 }
+// Calculate Best Times to Go Outside with Age Recommendations
+async function calculateBestTimes() {
+    const container = document.getElementById('best-time-recommendations');
+    
+    try {
+        // Get current AQI
+        const currentAQIElement = document.querySelector('#current-aqi .aqi-value');
+        const currentAQI = currentAQIElement ? parseInt(currentAQIElement.textContent) : 65;
+        
+        // Get weather forecast for next 24 hours
+        const response = await fetch(`http://localhost:5000/api/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const data = await response.json();
+        
+        if (!data.forecast || data.forecast.length === 0) {
+            container.innerHTML = `
+                <h3><i class="fas fa-clock"></i> Best Time Outdoors</h3>
+                <p class="no-safe-times">Forecast data unavailable</p>
+            `;
+            return;
+        }
+        
+        // Simulate hourly AQI for 24 hours based on weather
+        const hourlyAQI = [];
+        for (let i = 0; i < Math.min(8, data.forecast.length); i++) {
+            const weather = data.forecast[i];
+            const currentHour = new Date().getHours();
+            const hour = (currentHour + (i * 3)) % 24; // 3-hour intervals
+            
+            let predictedAQI = currentAQI;
+            
+            // Weather factors
+            if (weather.wind_speed > 10) predictedAQI *= 0.85;
+            if (weather.temperature > 85) predictedAQI *= 1.15;
+            if (weather.precipitation > 0) predictedAQI *= 0.7;
+            
+            // Time of day factors
+            if ((hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 19)) {
+                predictedAQI *= 1.2; // Rush hour
+            } else if (hour >= 22 || hour <= 5) {
+                predictedAQI *= 0.9; // Night
+            }
+            
+            hourlyAQI.push({
+                hour: hour,
+                aqi: Math.round(predictedAQI),
+                isToday: i < 4 // First 12 hours = today
+            });
+        }
+        
+        // Find best time windows
+        const recommendations = findBestTimeWindows(hourlyAQI);
+        
+        // Display recommendations
+        if (recommendations.length === 0) {
+            container.innerHTML = `
+                <h3><i class="fas fa-clock"></i> Best Time Outdoors</h3>
+                <p class="no-safe-times">⚠️ Poor air quality all day. Limit outdoor activities.</p>
+            `;
+        } else {
+            const recsHTML = recommendations.map(rec => `
+                <div class="time-slot">
+                    <div class="time-header">
+                        <span class="time-range">${rec.day}: ${rec.timeRange}</span>
+                        <span class="time-aqi">AQI ${rec.aqi}</span>
+                    </div>
+                    <div class="age-groups">
+                        ${rec.badges.map(badge => `<span class="age-badge ${badge.class}">${badge.text}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = `
+                <h3><i class="fas fa-clock"></i> Best Time Outdoors</h3>
+                ${recsHTML}
+            `;
+        }
+    } catch (error) {
+        console.error('Error calculating best times:', error);
+        container.innerHTML = `
+            <h3><i class="fas fa-clock"></i> Best Time Outdoors</h3>
+            <p class="no-safe-times">Unable to calculate recommendations</p>
+        `;
+    }
+}
+
+function findBestTimeWindows(hourlyData) {
+    const windows = [];
+    
+    for (let i = 0; i < hourlyData.length; i++) {
+        const slot = hourlyData[i];
+        const day = slot.isToday ? 'Today' : 'Tomorrow';
+        const timeRange = formatTimeRange(slot.hour);
+        const aqi = slot.aqi;
+        
+        // Determine who can go outside
+        const badges = getAgeBadges(aqi);
+        
+        if (badges.length > 0) {
+            windows.push({
+                day,
+                timeRange,
+                aqi,
+                badges
+            });
+        }
+    }
+    
+    return windows.slice(0, 4); // Show top 4 windows
+}
+
+function getAgeBadges(aqi) {
+    const badges = [];
+    
+    if (aqi <= 50) {
+        // Good - Everyone can go outside
+        badges.push({ text: '👶 All Ages Safe', class: 'all' });
+    } else if (aqi <= 75) {
+        // Moderate-low
+        badges.push({ text: '👦 Children OK', class: 'children' });
+        badges.push({ text: '💪 Adults OK', class: 'adults' });
+        badges.push({ text: '⚠️ Seniors: Limit Activity', class: 'warning' });
+    } else if (aqi <= 100) {
+        // Moderate
+        badges.push({ text: '💪 Healthy Adults Only', class: 'adults' });
+        badges.push({ text: '⚠️ Not for: Kids, Seniors', class: 'warning' });
+    } else if (aqi <= 150) {
+        // Unhealthy for sensitive
+        badges.push({ text: '🏃 Athletes Only (16-30)', class: 'adults' });
+        badges.push({ text: '🚫 Others Stay Inside', class: 'warning' });
+    }
+    // Above 150 - no one should go out, return empty array
+    
+    return badges;
+}
+
+function formatTimeRange(startHour) {
+    const endHour = (startHour + 3) % 24;
+    const formatHour = (h) => {
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const display = h % 12 || 12;
+        return `${display}${ampm}`;
+    };
+    return `${formatHour(startHour)}-${formatHour(endHour)}`;
+}
 
 // Satellite vs Ground Comparison Visualization
 async function createComparisonVisualization() {
@@ -779,6 +1006,28 @@ async function createComparisonVisualization() {
 
 // Initialize on load
 console.log('🚀 AirCast Enhanced Version Loaded!');
+
+// Initialize on load
+console.log('🚀 AirCast Enhanced Version Loaded!');
+
+// Event Listeners for Search
+document.addEventListener('DOMContentLoaded', function() {
+    // Search button click
+    const searchBtn = document.querySelector('.btn-search');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', searchLocation);
+    }
+    
+    // Enter key in search box
+    const searchInput = document.getElementById('location-search');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchLocation();
+            }
+        });
+    }
+});
 
 // Add this to map.js - Satellite vs Ground Data Comparison
 
