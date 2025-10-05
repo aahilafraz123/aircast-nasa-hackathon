@@ -6,6 +6,9 @@ let heatmapLayer;
 let forecastChart = null;
 let currentLocation = { lat: 39.9526, lng: -75.1652 };
 
+// Chat session management
+let chatSessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
 // Initialize Map
 function initMap() {
     map = new google.maps.Map(document.getElementById('map'), {
@@ -172,6 +175,9 @@ async function fetchAllData() {
     updateLoadingStep(0);
     
     try {
+        // Fetch AI summary FIRST (most important)
+        await fetchAISummary();
+        
         // Fetch air quality data
         await fetchAirQualityData();
         updateLoadingStep(1);
@@ -195,6 +201,47 @@ async function fetchAllData() {
         showLoadingOverlay(false);
     }
 }
+
+// Fetch AI Daily Summary
+async function fetchAISummary() {
+    const container = document.getElementById('ai-brief-content');
+    const timestampEl = document.getElementById('ai-timestamp');
+    
+    try {
+        console.log('🤖 Fetching AI summary...');
+        
+        const response = await fetch(
+            `http://localhost:8000/api/ai-summary?lat=${currentLocation.lat}&lon=${currentLocation.lng}`
+        );
+        
+        const data = await response.json();
+        
+        if (data.status === 'success' || data.status === 'partial') {
+            container.innerHTML = `
+                <div class="ai-brief-text">${data.summary}</div>
+            `;
+            
+            if (timestampEl) {
+                timestampEl.textContent = `Updated ${data.timestamp}`;
+            }
+            
+            console.log(`✅ AI summary loaded (${data.tokens_used || 0} tokens)`);
+        } else {
+            throw new Error(data.error || 'Failed to generate summary');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error fetching AI summary:', error);
+        
+        container.innerHTML = `
+            <div class="ai-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <p>AI insights temporarily unavailable</p>
+            </div>
+        `;
+    }
+}
+
 
 // Fetch Air Quality Data
 async function fetchAirQualityData() {
@@ -1195,6 +1242,155 @@ async function createComparisonVisualization() {
         `;
     }
 }
+
+
+// ==================== AI CHAT FUNCTIONS ====================
+
+// Send chat message
+async function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Clear input immediately
+    input.value = '';
+    
+    // Display user message
+    displayMessage(message, 'user');
+    
+    // Show typing indicator
+    showTypingIndicator();
+    
+    // Disable input while processing
+    input.disabled = true;
+    document.querySelector('.btn-send').disabled = true;
+    
+    try {
+        const response = await fetch('http://localhost:8000/api/ai-chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                session_id: chatSessionId,
+                lat: currentLocation.lat,
+                lng: currentLocation.lng
+            })
+        });
+        
+        const data = await response.json();
+        
+        // Remove typing indicator
+        removeTypingIndicator();
+        
+        if (data.status === 'success') {
+            displayMessage(data.response, 'ai');
+            console.log(`💬 Chat response (${data.tokens_used} tokens)`);
+        } else {
+            displayMessage("Sorry, I'm having trouble right now. Please try again!", 'ai');
+        }
+        
+    } catch (error) {
+        console.error('Chat error:', error);
+        removeTypingIndicator();
+        displayMessage("Oops! Connection issue. Please try again.", 'ai');
+    } finally {
+        // Re-enable input
+        input.disabled = false;
+        document.querySelector('.btn-send').disabled = false;
+        input.focus();
+    }
+}
+
+// Quick question handler
+function askQuickQuestion(question) {
+    const input = document.getElementById('chat-input');
+    input.value = question;
+    sendChatMessage();
+}
+
+// Display message in chat
+function displayMessage(text, type) {
+    const messagesContainer = document.getElementById('chat-messages');
+    
+    // Remove welcome message on first user message
+    if (type === 'user') {
+        const welcome = messagesContainer.querySelector('.chat-welcome');
+        if (welcome) {
+            welcome.remove();
+        }
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message message-${type}`;
+    
+    const bubble = document.createElement('div');
+    bubble.className = 'message-bubble';
+    bubble.textContent = text;
+    
+    messageDiv.appendChild(bubble);
+    messagesContainer.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Show typing indicator
+function showTypingIndicator() {
+    const messagesContainer = document.getElementById('chat-messages');
+    
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message message-ai';
+    typingDiv.id = 'typing-indicator';
+    
+    const indicator = document.createElement('div');
+    indicator.className = 'typing-indicator';
+    indicator.innerHTML = `
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+    `;
+    
+    typingDiv.appendChild(indicator);
+    messagesContainer.appendChild(typingDiv);
+    
+    // Scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Remove typing indicator
+function removeTypingIndicator() {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+// ==================== END CHAT FUNCTIONS ====================
+
+// Initialize on load
+console.log('🚀 AirCast Enhanced Version Loaded!');
+
+// Event Listeners for Search
+document.addEventListener('DOMContentLoaded', function() {
+    // Search button click
+    const searchBtn = document.querySelector('.btn-search');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', searchLocation);
+    }
+    
+    // Enter key in search box
+    const searchInput = document.getElementById('location-search');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchLocation();
+            }
+        });
+    }
+});
 
 // Initialize on load
 console.log('🚀 AirCast Enhanced Version Loaded!');

@@ -57,14 +57,68 @@
                     <i class="fas fa-crosshairs"></i> Use My Location
                 </button>
             </div>
+            
+<!-- NEW: AI Daily Brief -->
+<div class="ai-daily-brief" id="ai-daily-brief">
+    <h3><i class="fas fa-brain"></i> AI Daily Brief</h3>
+    <div class="ai-brief-content" id="ai-brief-content">
+        <div class="ai-loading">
+            <div class="mini-spinner"></div>
+            <p>AI is analyzing conditions...</p>
+        </div>
+    </div>
+    <div class="ai-brief-footer">
+        <span class="ai-badge">✨ Powered by AI</span>
+        <span class="ai-timestamp" id="ai-timestamp"></span>
+    </div>
+</div>
 
-            <div class="current-aqi-display" id="current-aqi">
-                <h3>Current Air Quality</h3>
-                <div class="aqi-loading">
-                    <div class="spinner"></div>
-                    <p>Loading...</p>
-                </div>
+<!-- NEW: AI Chat Assistant -->
+<div class="ai-chat-section" id="ai-chat-section">
+    <h3><i class="fas fa-comments"></i> Ask AI Assistant</h3>
+    
+    <!-- Chat Messages Container -->
+    <div class="chat-messages" id="chat-messages">
+        <div class="chat-welcome">
+            <p>👋 Hi! I'm your AI air quality assistant.</p>
+            <p>Ask me anything about:</p>
+            <div class="quick-questions">
+                <button class="quick-q" onclick="askQuickQuestion('Is it safe for kids to play outside?')">
+                    👶 Safe for kids?
+                </button>
+                <button class="quick-q" onclick="askQuickQuestion('When is the best time to exercise outdoors?')">
+                    🏃 Best time to exercise?
+                </button>
+                <button class="quick-q" onclick="askQuickQuestion('Should I cancel outdoor practice?')">
+                    ⚽ Cancel practice?
+                </button>
             </div>
+        </div>
+    </div>
+    
+    <!-- Chat Input -->
+    <div class="chat-input-container">
+        <input 
+            type="text" 
+            id="chat-input" 
+            class="chat-input" 
+            placeholder="Ask about air quality..."
+            maxlength="200"
+            onkeypress="if(event.key === 'Enter') sendChatMessage()"
+        />
+        <button class="btn-send" onclick="sendChatMessage()">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+
+<div class="current-aqi-display" id="current-aqi">
+    <h3>Current Air Quality</h3>
+    <div class="aqi-loading">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+</div>
 
             <div class="health-alerts" id="health-alerts">
                 <h3><i class="fas fa-triangle-exclamation"></i> Health Alerts</h3>
