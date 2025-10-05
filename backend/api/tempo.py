@@ -1,6 +1,9 @@
+# backend/api/tempo.py
+
 import os
 import requests
 from io import BytesIO
+from datetime import datetime
 
 try:
     import netCDF4 as nc
@@ -10,9 +13,82 @@ except ImportError:
     TEMPO_AVAILABLE = False
     print("⚠️ netCDF4 not installed - TEMPO satellite data disabled")
 
-# Azure Blob Storage URL - get from environment variable
-TEMPO_BLOB_URL = os.getenv('TEMPO_BLOB_URL', 
-    'https://aircasttempo.blob.core.windows.net/tempo-data/TEMPO_NO2_L2_V04_20251004T164423Z_S007G03.nc')
+# Azure Blob Storage URL
+TEMPO_BLOB_URL = os.getenv('TEMPO_BLOB_URL',
+                           'https://aircasttempo.blob.core.windows.net/tempo-data/TEMPO_NO2_L2_V04_20251004T164423Z_S007G03.nc')
+
+# ========================================
+# NEW: Observation timestamp from filename
+# ========================================
+TEMPO_OBSERVATION_TIME = datetime(
+    2025, 10, 4, 16, 44, 23)  # Oct 4, 2025 at 16:44:23 UTC
+
+
+# ========================================
+# NEW: Data freshness calculator
+# ========================================
+def get_data_freshness():
+    """
+    Calculate how fresh the TEMPO data is and provide context
+
+    Returns metadata about observation time, age, and status
+    """
+    current_time = datetime.utcnow()
+    age = current_time - TEMPO_OBSERVATION_TIME
+    hours_old = age.total_seconds() / 3600
+
+    # Determine status based on age
+    if hours_old < 2:
+        status = "Fresh"
+        status_color = "#00E400"
+        status_emoji = "🟢"
+    elif hours_old < 6:
+        status = "Recent"
+        status_color = "#FFFF00"
+        status_emoji = "🟡"
+    elif hours_old < 24:
+        status = "Moderate"
+        status_color = "#FF7E00"
+        status_emoji = "🟠"
+    else:
+        status = "Cached"
+        status_color = "#FF7E00"
+        status_emoji = "🔶"
+
+    return {
+        "observation_time_utc": TEMPO_OBSERVATION_TIME.strftime('%Y-%m-%d %H:%M:%S UTC'),
+        "current_time_utc": current_time.strftime('%Y-%m-%d %H:%M:%S UTC'),
+        "age_hours": round(hours_old, 1),
+        "age_days": round(hours_old / 24, 1),
+        "status": status,
+        "status_color": status_color,
+        "status_emoji": status_emoji,
+        "shutdown_note": "NASA data portal updates paused due to federal funding lapse",
+        "production_note": "Production system would fetch latest TEMPO granule hourly from NASA Earthdata"
+    }
+
+
+# ========================================
+# NEW: TEMPO metadata extractor
+# ========================================
+def get_tempo_metadata():
+    """
+    Extract metadata about the TEMPO product for transparency
+
+    Returns information about the data product, resolution, coverage
+    """
+    return {
+        "product_name": "TEMPO L2 NO2",
+        "product_version": "V04",
+        "satellite": "NASA TEMPO (Geostationary)",
+        "parameter": "Nitrogen Dioxide (NO2) Vertical Column",
+        "spatial_resolution": "2-8 km",
+        "temporal_resolution": "Hourly (daytime only)",
+        "coverage_area": "North America",
+        "orbit_type": "Geostationary (35,786 km altitude)",
+        "units": "molecules/cm²",
+        "data_source": "Azure Blob Storage Cache"
+    }
 
 
 def explore_tempo_structure():
@@ -25,7 +101,7 @@ def explore_tempo_structure():
         print(f"Downloading TEMPO file from Azure...")
         response = requests.get(TEMPO_BLOB_URL, timeout=30)
         response.raise_for_status()
-        
+
         file_data = BytesIO(response.content)
         dataset = nc.Dataset('tempo-memory', mode='r', memory=file_data.read())
 
@@ -56,14 +132,14 @@ def read_tempo_netcdf():
 
     try:
         print(f"📡 Downloading TEMPO file from Azure Blob Storage...")
-        
+
         # Download file from Azure Blob
         response = requests.get(TEMPO_BLOB_URL, timeout=30)
         response.raise_for_status()
-        
+
         # Load into memory
         file_data = BytesIO(response.content)
-        
+
         print(f"📡 Opening TEMPO dataset...")
         dataset = nc.Dataset('tempo-memory', mode='r', memory=file_data.read())
 
@@ -91,7 +167,11 @@ def read_tempo_netcdf():
 
 
 def get_tempo_value_at_location(lat, lon):
-    """Extract TEMPO NO2 value at specific coordinates"""
+    """
+    Extract TEMPO NO2 value at specific coordinates
+
+    NOW INCLUDES: Freshness metadata and data provenance information
+    """
     if not TEMPO_AVAILABLE:
         print("⚠️ TEMPO unavailable - netCDF4 not installed")
         return {
@@ -100,7 +180,9 @@ def get_tempo_value_at_location(lat, lon):
             'latitude': lat,
             'longitude': lon,
             'source': 'NASA TEMPO (Unavailable - netCDF4 not installed)',
-            'available': False
+            'available': False,
+            'freshness': None,
+            'metadata': None
         }
 
     tempo_data = read_tempo_netcdf()
@@ -112,7 +194,9 @@ def get_tempo_value_at_location(lat, lon):
             'latitude': lat,
             'longitude': lon,
             'source': 'NASA TEMPO (Data Error)',
-            'available': False
+            'available': False,
+            'freshness': None,
+            'metadata': None
         }
 
     lats = tempo_data['latitude']
@@ -130,13 +214,18 @@ def get_tempo_value_at_location(lat, lon):
 
     print(f"✅ TEMPO value at ({lat}, {lon}): NO2={no2_value:.2e}, AQI={aqi}")
 
+    # ========================================
+    # NEW: Return enhanced data with metadata
+    # ========================================
     return {
         'no2_column': no2_value,
         'aqi': aqi,
         'latitude': float(lats[idx]),
         'longitude': float(lons[idx]),
         'source': 'NASA TEMPO',
-        'available': True
+        'available': True,
+        'freshness': get_data_freshness(),      # ← NEW: Freshness info
+        'metadata': get_tempo_metadata()        # ← NEW: Product metadata
     }
 
 

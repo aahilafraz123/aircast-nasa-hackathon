@@ -1002,61 +1002,55 @@ async function createComparisonVisualization() {
     
     try {
         const tempoResponse = await fetch(`/api/tempo?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
-        const groundResponse = await fetch(`/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
-        
         const tempoData = await tempoResponse.json();
-        const groundData = await groundResponse.json();
         
-        if (!tempoData.tempo || !tempoData.tempo.available || tempoData.tempo.aqi === null) {
-            container.innerHTML = `
-                <p style="text-align: center; opacity: 0.6; padding: 20px;">
-                    <i class="fas fa-satellite-dish"></i><br><br>
-                    <strong>NASA TEMPO Satellite</strong><br>
-                    Currently processing data...<br>
-                    <small style="opacity: 0.7;">Ground station data available below</small>
-                </p>
-            `;
+        if (!tempoData.tempo || !tempoData.tempo.available) {
+            container.innerHTML = `<p style="text-align: center; opacity: 0.6;">TEMPO data unavailable</p>`;
             return;
         }
         
+        const tempo = tempoData.tempo;
+        const freshness = tempo.freshness;
+        
+        const groundResponse = await fetch(`/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const groundData = await groundResponse.json();
+        
         if (groundData.locations && groundData.locations.length > 0) {
-            const tempoAQI = tempoData.tempo.aqi;
+            const tempoAQI = tempo.aqi;
             const groundAQI = groundData.locations[0].aqi;
             const difference = Math.abs(tempoAQI - groundAQI);
             const accuracy = 100 - (difference / Math.max(tempoAQI, groundAQI) * 100);
             
-            // Generate discrepancy alert if difference > 25
-            let discrepancyAlert = '';
-            if (difference > 25) {
-                let explanation = '';
-                let alertColor = '';
-                
-                if (tempoAQI > groundAQI) {
-                    explanation = 'Satellite detects pollution aloft that hasn\'t reached ground level yet. Surface conditions may worsen as this pollution descends.';
-                    alertColor = '#FF7E00';
-                } else {
-                    explanation = 'Surface pollution is localized near ground sensors. Satellite shows cleaner air in the atmospheric column above, indicating conditions may improve.';
-                    alertColor = '#FFFF00';
-                }
-                
-                discrepancyAlert = `
-                    <div class="discrepancy-alert" style="border-left: 4px solid ${alertColor};">
-                        <div class="alert-icon">⚠️</div>
-                        <div class="alert-content">
-                            <strong>Significant Discrepancy Detected (${difference} AQI points)</strong>
-                            <p>${explanation}</p>
-                        </div>
-                    </div>
-                `;
-            }
-            
             container.innerHTML = `
-                ${discrepancyAlert}
+                <!-- Government Shutdown Notice -->
+                <div class="shutdown-notice" style="
+                    background: linear-gradient(135deg, rgba(255, 126, 0, 0.15), rgba(255, 0, 0, 0.15));
+                    border-left: 3px solid #FF7E00;
+                    padding: 12px;
+                    border-radius: 8px;
+                    margin-bottom: 15px;
+                    font-size: 12px;
+                ">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        <i class="fas fa-exclamation-triangle" style="color: #FF7E00;"></i>
+                        <strong>NASA Data Source Status</strong>
+                    </div>
+                    <div style="opacity: 0.9; line-height: 1.5;">
+                        📡 Using latest available TEMPO observation<br>
+                        🏛️ Federal funding lapse affecting NASA data updates<br>
+                        💾 System gracefully handling source interruption<br>
+                        📅 Last observation: ${freshness.observation_time_utc} (${freshness.age_hours}h ago)
+                    </div>
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); opacity: 0.7; font-size: 11px;">
+                        <i class="fas fa-shield-alt"></i> Production systems include redundancy and caching for resilience
+                    </div>
+                </div>
                 
+                <!-- Comparison Bars -->
                 <div class="comparison-bars">
                     <div class="comparison-item">
                         <div class="comparison-label">
-                            <i class="fas fa-satellite"></i> NASA TEMPO
+                            <i class="fas fa-satellite"></i> NASA TEMPO (Cached)
                         </div>
                         <div class="comparison-bar-container">
                             <div class="comparison-bar" style="width: ${(tempoAQI/200)*100}%; background: ${getAQIColor(tempoAQI)};">
@@ -1067,7 +1061,7 @@ async function createComparisonVisualization() {
                     
                     <div class="comparison-item">
                         <div class="comparison-label">
-                            <i class="fas fa-tower-broadcast"></i> Ground Station
+                            <i class="fas fa-tower-broadcast"></i> Ground Station (Live)
                         </div>
                         <div class="comparison-bar-container">
                             <div class="comparison-bar" style="width: ${(groundAQI/200)*100}%; background: ${getAQIColor(groundAQI)};">
@@ -1085,9 +1079,9 @@ async function createComparisonVisualization() {
                         </div>
                     </div>
                     <div class="accuracy-info">
-                        <p><strong>Difference:</strong> ${difference} AQI points</p>
+                        <p><strong>Satellite vs Ground:</strong> ${difference} AQI point difference</p>
                         <p style="font-size: 11px; opacity: 0.7; margin-top: 8px;">
-                            Satellite and ground measurements show ${accuracy > 85 ? 'excellent' : accuracy > 70 ? 'good' : 'moderate'} agreement
+                            ${accuracy > 85 ? 'Excellent' : accuracy > 70 ? 'Good' : 'Moderate'} agreement between data sources
                         </p>
                     </div>
                 </div>
@@ -1098,7 +1092,7 @@ async function createComparisonVisualization() {
         container.innerHTML = `
             <p style="text-align: center; opacity: 0.6; padding: 20px;">
                 <i class="fas fa-exclamation-circle"></i><br>
-                Comparison data unavailable
+                Error loading comparison data
             </p>
         `;
     }
