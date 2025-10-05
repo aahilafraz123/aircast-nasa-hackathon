@@ -210,7 +210,7 @@ async function fetchAISummary() {
         console.log('🤖 Fetching AI summary...');
         
         const response = await fetch(
-            `http://localhost:8000/api/ai-summary?lat=${currentLocation.lat}&lon=${currentLocation.lng}`
+            `/api/ai-summary?lat=${currentLocation.lat}&lon=${currentLocation.lng}`
         );
         
         const data = await response.json();
@@ -244,7 +244,8 @@ async function fetchAISummary() {
 // Fetch Air Quality Data
 async function fetchAirQualityData() {
     try {
-        const response = await fetch(`http://localhost:8000/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const response = await fetch(`/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+
         const data = await response.json();
         
         if (data.status === 'success' && data.locations) {
@@ -273,7 +274,8 @@ async function fetchAirQualityData() {
 // Fetch Forecast Data
 async function fetchForecastData() {
     try {
-        const response = await fetch(`http://localhost:8000/api/forecast?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const response = await fetch(`/api/forecast?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+
         const data = await response.json();
         
         if (data.status === 'success' && data.forecast) {
@@ -289,7 +291,8 @@ async function fetchForecastData() {
 // Fetch Weather Data
 async function fetchWeatherData() {
     try {
-        const response = await fetch(`http://localhost:8000/api/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const response = await fetch(`/api/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+
         const data = await response.json();
         
         if (data.status === 'success') {
@@ -359,7 +362,8 @@ async function showEnhancedInfoWindow(location, marker) {
     // Fetch forecast for this specific location
     let forecastHTML = '';
     try {
-        const response = await fetch(`http://localhost:8000/api/forecast?lat=${location.lat}&lon=${location.lng}`);
+        const response = await fetch(`/api/forecast?lat=${location.lat}&lon=${location.lng}`);
+
         const data = await response.json();
         
         if (data.forecast && data.forecast.length > 0) {
@@ -552,7 +556,8 @@ async function updateHealthAlerts(currentAqi) {
     
     try {
         // Fetch forecast data to find peaks and improvements
-        const response = await fetch(`http://localhost:8000/api/forecast?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const response = await fetch(`/api/forecast?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+
         const data = await response.json();
         
         if (!data.forecast || data.forecast.length === 0) {
@@ -853,7 +858,8 @@ function showChart(type) {
         }
         
         // You need to fetch weather data first
-        fetch(`http://localhost:8000/api/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}`)
+        fetch(`/api/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}`)
+
             .then(res => res.json())
             .then(data => {
                 if (data.forecast) {
@@ -914,7 +920,8 @@ async function updateUserGroupSafety() {
     const container = document.getElementById('user-safety-guide');
     
     try {
-        const response = await fetch(`http://localhost:8000/api/safety-groups?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const response = await fetch(`/api/safety-groups?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+
         const data = await response.json();
         
         if (data.status !== 'success') {
@@ -994,8 +1001,8 @@ async function createComparisonVisualization() {
     const container = document.getElementById('comparison-chart');
     
     try {
-        const tempoResponse = await fetch(`http://localhost:8000/api/tempo?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
-        const groundResponse = await fetch(`http://localhost:8000/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const tempoResponse = await fetch(`/api/tempo?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const groundResponse = await fetch(`/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
         
         const tempoData = await tempoResponse.json();
         const groundData = await groundResponse.json();
@@ -1141,7 +1148,7 @@ async function sendChatMessage() {
     if (sendBtn) sendBtn.disabled = true;
     
     try {
-        const response = await fetch('http://localhost:8000/api/ai-chat', {
+        const response = await fetch('/api/ai-chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
