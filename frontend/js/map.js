@@ -198,7 +198,7 @@ async function fetchAllData() {
 // Fetch Air Quality Data
 async function fetchAirQualityData() {
     try {
-        const response = await fetch(`http://localhost:5000/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const response = await fetch(`http://localhost:8000/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
         const data = await response.json();
         
         if (data.status === 'success' && data.locations) {
@@ -227,7 +227,7 @@ async function fetchAirQualityData() {
 // Fetch Forecast Data
 async function fetchForecastData() {
     try {
-        const response = await fetch(`http://localhost:5000/api/forecast?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const response = await fetch(`http://localhost:8000/api/forecast?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
         const data = await response.json();
         
         if (data.status === 'success' && data.forecast) {
@@ -242,7 +242,7 @@ async function fetchForecastData() {
 // Fetch Weather Data
 async function fetchWeatherData() {
     try {
-        const response = await fetch(`http://localhost:5000/api/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const response = await fetch(`http://localhost:8000/api/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
         const data = await response.json();
         
         if (data.status === 'success') {
@@ -312,7 +312,7 @@ async function showEnhancedInfoWindow(location, marker) {
     // Fetch forecast for this specific location
     let forecastHTML = '';
     try {
-        const response = await fetch(`http://localhost:5000/api/forecast?lat=${location.lat}&lon=${location.lng}`);
+        const response = await fetch(`http://localhost:8000/api/forecast?lat=${location.lat}&lon=${location.lng}`);
         const data = await response.json();
         
         if (data.forecast && data.forecast.length > 0) {
@@ -735,7 +735,7 @@ function showChart(type) {
         }
         
         // You need to fetch weather data first
-        fetch(`http://localhost:5000/api/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}`)
+        fetch(`http://localhost:8000/api/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}`)
             .then(res => res.json())
             .then(data => {
                 if (data.forecast) {
@@ -800,7 +800,7 @@ async function calculateBestTimes() {
         const currentAQI = currentAQIElement ? parseInt(currentAQIElement.textContent) : 65;
         
         // Get weather forecast for next 24 hours
-        const response = await fetch(`http://localhost:5000/api/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const response = await fetch(`http://localhost:8000/api/weather?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
         const data = await response.json();
         
         if (!data.forecast || data.forecast.length === 0) {
@@ -940,13 +940,27 @@ async function createComparisonVisualization() {
     const container = document.getElementById('comparison-chart');
     
     try {
-        const tempoResponse = await fetch(`http://localhost:5000/api/tempo?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
-        const groundResponse = await fetch(`http://localhost:5000/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const tempoResponse = await fetch(`http://localhost:8000/api/tempo?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const groundResponse = await fetch(`http://localhost:8000/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
         
         const tempoData = await tempoResponse.json();
         const groundData = await groundResponse.json();
         
-        if (tempoData.tempo && groundData.locations && groundData.locations.length > 0) {
+        // Check if TEMPO data is actually available
+        if (!tempoData.tempo || !tempoData.tempo.available || tempoData.tempo.aqi === null) {
+            container.innerHTML = `
+                <p style="text-align: center; opacity: 0.6; padding: 20px;">
+                    <i class="fas fa-satellite-dish"></i><br><br>
+                    <strong>NASA TEMPO Satellite</strong><br>
+                    Currently processing data...<br>
+                    <small style="opacity: 0.7;">Ground station data available below</small>
+                </p>
+            `;
+            return;
+        }
+        
+        // Only proceed if we have valid data from both sources
+        if (groundData.locations && groundData.locations.length > 0) {
             const tempoAQI = tempoData.tempo.aqi;
             const groundAQI = groundData.locations[0].aqi;
             const difference = Math.abs(tempoAQI - groundAQI);
@@ -1036,8 +1050,8 @@ async function createComparisonVisualization() {
     
     try {
         // Fetch both satellite (TEMPO) and ground station data
-        const tempoResponse = await fetch(`http://localhost:5000/api/tempo?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
-        const groundResponse = await fetch(`http://localhost:5000/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const tempoResponse = await fetch(`http://localhost:8000/api/tempo?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
+        const groundResponse = await fetch(`http://localhost:8000/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
         
         const tempoData = await tempoResponse.json();
         const groundData = await groundResponse.json();
