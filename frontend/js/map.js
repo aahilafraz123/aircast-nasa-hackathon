@@ -935,7 +935,6 @@ function formatTimeRange(startHour) {
     return `${formatHour(startHour)}-${formatHour(endHour)}`;
 }
 
-// Satellite vs Ground Comparison Visualization
 async function createComparisonVisualization() {
     const container = document.getElementById('comparison-chart');
     
@@ -946,7 +945,6 @@ async function createComparisonVisualization() {
         const tempoData = await tempoResponse.json();
         const groundData = await groundResponse.json();
         
-        // Check if TEMPO data is actually available
         if (!tempoData.tempo || !tempoData.tempo.available || tempoData.tempo.aqi === null) {
             container.innerHTML = `
                 <p style="text-align: center; opacity: 0.6; padding: 20px;">
@@ -959,14 +957,40 @@ async function createComparisonVisualization() {
             return;
         }
         
-        // Only proceed if we have valid data from both sources
         if (groundData.locations && groundData.locations.length > 0) {
             const tempoAQI = tempoData.tempo.aqi;
             const groundAQI = groundData.locations[0].aqi;
             const difference = Math.abs(tempoAQI - groundAQI);
             const accuracy = 100 - (difference / Math.max(tempoAQI, groundAQI) * 100);
             
+            // Generate discrepancy alert if difference > 25
+            let discrepancyAlert = '';
+            if (difference > 25) {
+                let explanation = '';
+                let alertColor = '';
+                
+                if (tempoAQI > groundAQI) {
+                    explanation = 'Satellite detects pollution aloft that hasn\'t reached ground level yet. Surface conditions may worsen as this pollution descends.';
+                    alertColor = '#FF7E00'; // Orange warning
+                } else {
+                    explanation = 'Surface pollution is localized near ground sensors. Satellite shows cleaner air in the atmospheric column above, indicating conditions may improve.';
+                    alertColor = '#FFFF00'; // Yellow caution
+                }
+                
+                discrepancyAlert = `
+                    <div class="discrepancy-alert" style="border-left: 4px solid ${alertColor};">
+                        <div class="alert-icon">⚠️</div>
+                        <div class="alert-content">
+                            <strong>Significant Discrepancy Detected (${difference} AQI points)</strong>
+                            <p>${explanation}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
             container.innerHTML = `
+                ${discrepancyAlert}
+                
                 <div class="comparison-bars">
                     <div class="comparison-item">
                         <div class="comparison-label">
@@ -1049,12 +1073,24 @@ async function createComparisonVisualization() {
     const container = document.getElementById('comparison-chart');
     
     try {
-        // Fetch both satellite (TEMPO) and ground station data
         const tempoResponse = await fetch(`http://localhost:8000/api/tempo?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
         const groundResponse = await fetch(`http://localhost:8000/api/air-quality?lat=${currentLocation.lat}&lon=${currentLocation.lng}`);
         
         const tempoData = await tempoResponse.json();
         const groundData = await groundResponse.json();
+        
+        // Check if TEMPO data is available
+        if (!tempoData.tempo || !tempoData.tempo.available || tempoData.tempo.aqi === null) {
+            container.innerHTML = `
+                <p style="text-align: center; opacity: 0.6; padding: 20px;">
+                    <i class="fas fa-satellite-dish"></i><br><br>
+                    <strong>NASA TEMPO Satellite</strong><br>
+                    Currently processing data...<br>
+                    <small style="opacity: 0.7;">Ground station data available below</small>
+                </p>
+            `;
+            return;
+        }
         
         if (tempoData.tempo && groundData.locations && groundData.locations.length > 0) {
             const tempoAQI = tempoData.tempo.aqi;
@@ -1062,7 +1098,34 @@ async function createComparisonVisualization() {
             const difference = Math.abs(tempoAQI - groundAQI);
             const accuracy = 100 - (difference / Math.max(tempoAQI, groundAQI) * 100);
             
+            // Generate discrepancy alert if difference > 25
+            let discrepancyAlert = '';
+            if (difference > 25) {
+                let explanation = '';
+                let alertColor = '';
+                
+                if (tempoAQI > groundAQI) {
+                    explanation = 'Satellite detects pollution aloft that hasn\'t reached ground level yet. Surface conditions may worsen as this pollution descends.';
+                    alertColor = '#FF7E00';
+                } else {
+                    explanation = 'Surface pollution is localized near ground sensors. Satellite shows cleaner air in the atmospheric column above, indicating conditions may improve.';
+                    alertColor = '#FFFF00';
+                }
+                
+                discrepancyAlert = `
+                    <div class="discrepancy-alert" style="border-left: 4px solid ${alertColor};">
+                        <div class="alert-icon">⚠️</div>
+                        <div class="alert-content">
+                            <strong>Significant Discrepancy Detected (${difference} AQI points)</strong>
+                            <p>${explanation}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
             container.innerHTML = `
+                ${discrepancyAlert}
+                
                 <div class="comparison-bars">
                     <div class="comparison-item">
                         <div class="comparison-label">
