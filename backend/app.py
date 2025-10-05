@@ -556,15 +556,6 @@ Guidelines:
         }), 200  # Return 200 so frontend can display fallback message
 
 
-if __name__ == '__main__':
-    print("🚀 Starting AirCast API on http://localhost:5000")
-    print("=" * 50)
-    print("📍 Frontend: http://localhost:5000")
-    print("📡 API: http://localhost:5000/api/")
-    print("=" * 50)
-    port = int(os.getenv('PORT', 8000))
-app.run(debug=True, port=port, host='0.0.0.0')    
-
 
 if __name__ == '__main__':
     print("�� Starting AirCast API on http://localhost:5000")
